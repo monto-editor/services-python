@@ -8,7 +8,6 @@ import monto.service.message.*;
 import monto.service.region.IRegion;
 import org.zeromq.ZContext;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -137,6 +136,15 @@ public class PythonCodeCompletion extends MontoService {
             completions.add(new Completion(name, content.extract(structureIdent).toString(), icon));
             node.getChildren().forEach(child -> child.accept(this));
         }
+
+        private void leaf(NonTerminal node, String name, String icon) {
+            AST ident = node
+                    .getChildren()
+                    .stream()
+                    .filter(ast -> ast instanceof Terminal)
+                    .findFirst().get();
+            completions.add(new Completion(name, content.extract(ident).toString(), icon));
+        }
         
 
         public List<Completion> getCompletions() {
@@ -161,8 +169,11 @@ public class PythonCodeCompletion extends MontoService {
 
         @Override
         public void visit(NonTerminal node) {
+            if (selection.inRange(node) || rightBehind(selection, node))
+                selectedPath.add(node);
             node.getChildren()
                     .stream()
+                    .filter(child -> selection.inRange(child) || rightBehind(selection, child))
                     .forEach(child -> child.accept(this));
         }
 
@@ -183,6 +194,10 @@ public class PythonCodeCompletion extends MontoService {
                 return false;
             }
         }
+    }
+
+    private static <A> A last(List<A> list) {
+        return list.get(list.size() - 1);
     }
 
 }
