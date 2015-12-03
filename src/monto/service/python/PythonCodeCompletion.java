@@ -5,11 +5,13 @@ import monto.service.ast.*;
 import monto.service.completion.Completion;
 import monto.service.completion.Completions;
 import monto.service.message.*;
+import monto.service.outline.Outline;
 import monto.service.region.IRegion;
 import org.zeromq.ZContext;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeSet;
 import java.util.stream.Stream;
 
 public class PythonCodeCompletion extends MontoService {
@@ -52,7 +54,9 @@ public class PythonCodeCompletion extends MontoService {
             List<AST> selectedPath = selectedPath(root, version.getSelections().get(0));
 
 //            if (selectedPath.size() > 0 && last(selectedPath) instanceof Terminal) {
-                Terminal terminalToBeCompleted = (Terminal) selectedPath.get(0);
+                Terminal terminalToBeCompleted = (Terminal) last(selectedPath);
+//            	NonTerminal terminalToBeCompleted = (NonTerminal) selectedPath.get(0);
+            	
                 String text = version.getContent().extract(terminalToBeCompleted).toString();
                 
                 if (terminalToBeCompleted.getEndOffset() >= version.getSelections().get(0).getStartOffset() && terminalToBeCompleted.getStartOffset() <= version.getSelections().get(0).getStartOffset()) {
@@ -94,6 +98,7 @@ public class PythonCodeCompletion extends MontoService {
 	
 	private static class AllCompletions implements ASTVisitor {
 
+		private TreeSet<String> variableNamesAlreadyOutlined = new TreeSet<String>();
         private List<Completion> completions = new ArrayList<>();
         private Contents content;
 
@@ -103,18 +108,23 @@ public class PythonCodeCompletion extends MontoService {
 
         @Override
         public void visit(NonTerminal node) {
+        	
             switch (node.getName()) {
 
                 case "funcdef":
-                	structureDeclaration(node, "def", IconType.NO_IMG);
+                	addFuncToConverted(node, "def", IconType.PUBLIC);
                     break;
 
                 case "classdef":
-                    structureDeclaration(node, "class", IconType.CLASS);
+                	classToConverted(node, "class", IconType.CLASS);
                     break;
                     
                 case "global_stmt":
-                	structureDeclaration(node, "global", IconType.NO_IMG);
+                	structureDeclaration(node, "global", IconType.ENUM);
+                	break;
+                	
+                case "expr_stmt":
+                	checkExpr_stmt(node, "var", IconType.PRIVATE);
                 	break;
 
                 default:
@@ -136,6 +146,68 @@ public class PythonCodeCompletion extends MontoService {
             completions.add(new Completion(name, content.extract(structureIdent).toString(), icon));
             node.getChildren().forEach(child -> child.accept(this));
         }
+        
+        private void checkExpr_stmt(NonTerminal node, String name, String icon) {
+            
+        	TerminalFinder finder = new TerminalFinder();
+        	
+        	node.getChildren()
+                	.stream()
+                	.filter(ast -> ast instanceof NonTerminal)
+                	.forEach(ident -> ident.accept(finder));
+        	
+        	
+        	String caption1stTerminalChild;
+        	if(finder.getFoundTerminal() != null){
+        		caption1stTerminalChild = content.extract(finder.getFoundTerminal()).toString();
+        		
+        		node.getChildren()
+        		.stream()
+        		.filter(ast -> ast instanceof Terminal)
+        		.limit(2).reduce((previous, current) -> current)
+        		.ifPresent(ident -> {
+        			String secondChild = content.extract(ident).toString();
+        			
+        			if (!variableNamesAlreadyOutlined.contains(caption1stTerminalChild)&&secondChild.equals("=") ){
+        				
+        				NonTerminal reducedNode = new NonTerminal(secondChild, node.getChildren().get(0));
+        				completions.add(new Completion(name, caption1stTerminalChild, icon));
+//        				Outline variable = new Outline(name, reducedNode, icon);
+//        				converted.peek().addChild(variable);
+//        				converted.push(variable);
+//        				converted.pop();
+        				variableNamesAlreadyOutlined.add(caption1stTerminalChild);
+        			}
+        		});
+        	}
+        	 node.getChildren().forEach(child -> child.accept(this));
+        }
+        
+        private void addFuncToConverted(NonTerminal node, String name, String icon) {
+            Object[] terminalChildren = node.getChildren()
+                    .stream()
+                    .filter(ast -> ast instanceof Terminal)
+                    .toArray();
+            if (terminalChildren.length > 1) {
+                Terminal structureIdent = (Terminal) terminalChildren[1];
+                completions.add(new Completion(name, content.extract(structureIdent).toString(), icon));
+
+            }
+            node.getChildren().forEach(child -> child.accept(this));
+        }
+        
+        private void classToConverted(NonTerminal node, String name, String icon) {
+            Object[] terminalChildren = node.getChildren()
+                    .stream()
+                    .filter(ast -> ast instanceof Terminal)
+                    .toArray();
+            if (terminalChildren.length > 1) {
+                Terminal structureIdent = (Terminal) terminalChildren[0];
+                completions.add(new Completion(name, content.extract(structureIdent).toString(), icon));
+
+            }
+            node.getChildren().forEach(child -> child.accept(this));
+        }
 
         private void leaf(NonTerminal node, String name, String icon) {
             AST ident = node
@@ -149,6 +221,32 @@ public class PythonCodeCompletion extends MontoService {
 
         public List<Completion> getCompletions() {
             return completions;
+        }
+        
+        private class TerminalFinder implements ASTVisitor {
+        	
+        	private Terminal foundTerminal = null;
+
+
+    		@Override
+    		public void visit(NonTerminal node) {
+    			if(foundTerminal == null){
+    				node.getChildren()
+                    .stream().forEach(child -> child.accept(this));
+    			}
+    			
+    		}
+
+    		@Override
+    		public void visit(Terminal token) {
+    			foundTerminal = token;
+    			
+    		}
+    		
+    		public Terminal getFoundTerminal() {
+    			return foundTerminal;
+    		}
+        	
         }
     }
 
@@ -199,5 +297,7 @@ public class PythonCodeCompletion extends MontoService {
     private static <A> A last(List<A> list) {
         return list.get(list.size() - 1);
     }
+    
+
 
 }

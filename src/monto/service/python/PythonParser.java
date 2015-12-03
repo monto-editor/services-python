@@ -29,10 +29,6 @@ public class PythonParser extends MontoService {
 	private static final Product AST = new Product("ast");
 	private static final Language PYTHON = new Language("python");
 	
-	private Python3Lexer lexer = new Python3Lexer(new ANTLRInputStream());
-	private CommonTokenStream tokens = new CommonTokenStream(lexer);
-	private Python3Parser parser = new Python3Parser(tokens);
-
 	
 	public PythonParser(ZContext context, String address, String registrationAddress, String serviceID) {
 		super(context, 
@@ -54,10 +50,12 @@ public class PythonParser extends MontoService {
 			throw new IllegalArgumentException("wrong language in version message");
 		}
 		
-		lexer = new Python3Lexer(new ANTLRInputStream());
+		Python3Lexer lexer = new Python3Lexer(new ANTLRInputStream());
 		lexer.setInputStream(new ANTLRInputStream(version.getContent().getReader()));
-		CommonTokenStream tokens = new CommonTokenStream(lexer);
+		CommonTokenStream  tokens = new CommonTokenStream(lexer);
 		
+		
+		Python3Parser parser = new Python3Parser(tokens);
 		parser.setTokenStream(tokens);
 		ParserRuleContext root = parser.file_input();
 		ParseTreeWalker walker = new ParseTreeWalker();

@@ -19,7 +19,7 @@ public class PythonTokenizer extends MontoService {
 	private static final Product TOKENS = new Product("tokens");
     private static final Language PYTHON = new Language("python");
 
-    private Python3Lexer lexer = new Python3Lexer(new ANTLRInputStream());
+    private Python3Lexer lexer;
 
     public PythonTokenizer(ZContext context, String address, String registrationAddress, String serviceID) {
         super(context, 
@@ -71,7 +71,7 @@ public class PythonTokenizer extends MontoService {
 
         Category category;
         
-        System.out.println(token +"type: " +token.getType());
+//        System.out.println(token +"type: " +token.getType());
         switch (token.getType()) {
     	
        	
@@ -238,7 +238,6 @@ public class PythonTokenizer extends MontoService {
         	break;
 
         default:
-        	System.out.println(token +"type: " +token.getType());
             category = Category.UNKNOWN;
         }
         return new Token(offset, length, category);
