@@ -4,9 +4,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.ANTLRInputStream;
-import org.zeromq.ZContext;
 
 import monto.service.MontoService;
+import monto.service.ZMQConfiguration;
 import monto.service.message.*;
 import monto.service.python.antlr.Python3Lexer;
 import monto.service.python.antlr.Python3Parser;
@@ -16,54 +16,35 @@ import monto.service.token.Tokens;
 
 public class PythonTokenizer extends MontoService {
 
-	private static final Product TOKENS = new Product("tokens");
-    private static final Language PYTHON = new Language("python");
-
     private Python3Lexer lexer;
 
-    public PythonTokenizer(ZContext context, String address, String registrationAddress, String serviceID) {
-        super(context, 
-        		address, 
-        		registrationAddress, 
-        		serviceID, 
-        		"ANTLR Tokenizer for Python", 
+    public PythonTokenizer(ZMQConfiguration zmqConfig) {
+        super(zmqConfig, 
+        		new ServiceID("pythonTokenizer"), 
+        		"Tokenizer", 
         		"A tokenizer for Python that uses ANTLR for tokenizing", 
-        		TOKENS, 
-        		PYTHON, 
+        		Products.TOKENS, 
+        		Languages.PYTHON, 
         		new String[]{"Source"});
     }
 
 	@Override
-	public ProductMessage onVersionMessage(List<Message> messages) throws Exception {
+	public ProductMessageWithContents onVersionMessage(List<Message> messages) throws Exception {
 		VersionMessage version = Messages.getVersionMessage(messages);
-        if (!version.getLanguage().equals(PYTHON)) {
+        if (!version.getLanguage().equals(Languages.PYTHON)) {
             throw new IllegalArgumentException("wrong language in version message");
         }
-//        version.getContent().getReader().;
         
         lexer = new Python3Lexer(new ANTLRInputStream());
-        lexer.setInputStream(new ANTLRInputStream(version.getContent().getReader()));
-//        System.out.println("version.getContent().getReader() = " + version.getContent().getReader());
-        
-//        System.out.println("lexer.getAllTokens().size = " + lexer.getAllTokens().size());
+        lexer.setInputStream(new ANTLRInputStream(version.getContent()));
         List<Token> tokens = lexer.getAllTokens().stream().map(token -> convertToken(token)).collect(Collectors.toList());
 
-        System.out.println("PYTHON TOKENIZERs ONVERSIONMESSAGE: tokens.size() = " + tokens.size());
         
-        return new ProductMessage(
-                version.getVersionId(),
-                new LongKey(1),
-                version.getSource(),
-                TOKENS,
-                PYTHON,
-                Tokens.encode(tokens));
+        return productMessage(version.getVersionId(), 
+        		version.getSource(), 
+        		Tokens.encode(tokens));
 	}
 	
-	@Override
-	public void onConfigurationMessage(List<Message> arg0) throws Exception {
-		
-	}
-
 	
 	private Token convertToken(org.antlr.v4.runtime.Token token) {
         int offset = token.getStartIndex();
@@ -71,7 +52,6 @@ public class PythonTokenizer extends MontoService {
 
         Category category;
         
-//        System.out.println(token +"type: " +token.getType());
         switch (token.getType()) {
     	
        	

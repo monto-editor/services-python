@@ -1,13 +1,12 @@
 package monto.service.python;
 
 import monto.service.MontoService;
+import monto.service.ZMQConfiguration;
 import monto.service.ast.*;
 import monto.service.completion.Completion;
 import monto.service.completion.Completions;
 import monto.service.message.*;
-import monto.service.outline.Outline;
 import monto.service.region.IRegion;
-import org.zeromq.ZContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,35 +15,26 @@ import java.util.stream.Stream;
 
 public class PythonCodeCompletion extends MontoService {
 	
-    private static final Product AST = new Product("ast");
-    private static final Product COMPLETIONS = new Product("completions");
-    private static final Language PYTHON = new Language("python");
 
-	public PythonCodeCompletion(ZContext context, String address, String registrationAddress, String serviceID) {
-        super(context, 
-        		address, 
-        		registrationAddress, 
-        		serviceID, 
+	public PythonCodeCompletion(ZMQConfiguration zmqConfig) {
+        super(zmqConfig,
+        		new ServiceID("pythonCodeCompletion"), 
         		"Code Completion service for Python", 
         		"A code completion service for Python",  
-        		COMPLETIONS, 
-        		PYTHON, 
+        		Products.COMPLETIONS, 
+        		Languages.PYTHON, 
         		new String[]{"Source","ast/python"});
 	}
 
-	@Override
-	public void onConfigurationMessage(List<Message> arg0) throws Exception {
-		
-	}
 
 	@Override
-	public ProductMessage onVersionMessage(List<Message> messages) throws Exception {
+	public ProductMessageWithContents onVersionMessage(List<Message> messages) throws Exception {
         VersionMessage version = Messages.getVersionMessage(messages);
-        if (!version.getLanguage().equals(PYTHON)) {
+        if (!version.getLanguage().equals(Languages.PYTHON)) {
             throw new IllegalArgumentException("wrong language in version message");
         }
-        ProductMessage ast = Messages.getProductMessage(messages, AST, PYTHON);
-        if (!ast.getLanguage().equals(PYTHON)) {
+        ProductMessage ast = Messages.getProductMessage(messages, Products.AST, Languages.PYTHON);
+        if (!ast.getLanguage().equals(Languages.PYTHON)) {
             throw new IllegalArgumentException("wrong language in ast product message");
         }
         
@@ -53,11 +43,9 @@ public class PythonCodeCompletion extends MontoService {
             List<Completion> allcompletions = allCompletions(version.getContent(), root);
             List<AST> selectedPath = selectedPath(root, version.getSelections().get(0));
 
-//            if (selectedPath.size() > 0 && last(selectedPath) instanceof Terminal) {
                 Terminal terminalToBeCompleted = (Terminal) last(selectedPath);
-//            	NonTerminal terminalToBeCompleted = (NonTerminal) selectedPath.get(0);
             	
-                String text = version.getContent().extract(terminalToBeCompleted).toString();
+                String text = extract(version.getContent(), terminalToBeCompleted).toString();
                 
                 if (terminalToBeCompleted.getEndOffset() >= version.getSelections().get(0).getStartOffset() && terminalToBeCompleted.getStartOffset() <= version.getSelections().get(0).getStartOffset()) {
                     int vStart = version.getSelections().get(0).getStartOffset();
@@ -76,21 +64,17 @@ public class PythonCodeCompletion extends MontoService {
                                         version.getSelections().get(0).getStartOffset(),
                                         comp.getIcon()));
 
-                return new ProductMessage(
-                        version.getVersionId(),
-                        new LongKey(1),
-                        version.getSource(),
-                        COMPLETIONS,
-                        PYTHON,
-                        Completions.encode(relevant),
-                        new ProductDependency(ast));
-//            }
-//            throw new IllegalArgumentException(String.format("Last token in selection path is not a terminal: %s", selectedPath));
+                return productMessage(
+                		version.getVersionId(), 
+                		version.getSource(), 
+                		Completions.encode(relevant), 
+                		new ProductDependency(ast));
+                
         }
         throw new IllegalArgumentException("Code completion needs selection");
 	}
 	
-    private static List<Completion> allCompletions(Contents contents, AST root) {
+    private static List<Completion> allCompletions(String contents, AST root) {
         AllCompletions completionVisitor = new AllCompletions(contents);
         root.accept(completionVisitor);
         return completionVisitor.getCompletions();
@@ -100,9 +84,9 @@ public class PythonCodeCompletion extends MontoService {
 
 		private TreeSet<String> variableNamesAlreadyOutlined = new TreeSet<String>();
         private List<Completion> completions = new ArrayList<>();
-        private Contents content;
+        private String content;
 
-        public AllCompletions(Contents content) {
+        public AllCompletions(String content) {
             this.content = content;
         }
 
@@ -143,7 +127,7 @@ public class PythonCodeCompletion extends MontoService {
                     .stream()
                     .filter(ast -> ast instanceof Terminal)
                     .reduce((previous, current) -> current).get();
-            completions.add(new Completion(name, content.extract(structureIdent).toString(), icon));
+            completions.add(new Completion(name, extract(content,structureIdent).toString(), icon));
             node.getChildren().forEach(child -> child.accept(this));
         }
         
@@ -159,23 +143,17 @@ public class PythonCodeCompletion extends MontoService {
         	
         	String caption1stTerminalChild;
         	if(finder.getFoundTerminal() != null){
-        		caption1stTerminalChild = content.extract(finder.getFoundTerminal()).toString();
+        		caption1stTerminalChild = extract(content,finder.getFoundTerminal()).toString();
         		
         		node.getChildren()
         		.stream()
         		.filter(ast -> ast instanceof Terminal)
         		.limit(2).reduce((previous, current) -> current)
         		.ifPresent(ident -> {
-        			String secondChild = content.extract(ident).toString();
+        			String secondChild = extract(content,ident).toString();
         			
         			if (!variableNamesAlreadyOutlined.contains(caption1stTerminalChild)&&secondChild.equals("=") ){
-        				
-        				NonTerminal reducedNode = new NonTerminal(secondChild, node.getChildren().get(0));
         				completions.add(new Completion(name, caption1stTerminalChild, icon));
-//        				Outline variable = new Outline(name, reducedNode, icon);
-//        				converted.peek().addChild(variable);
-//        				converted.push(variable);
-//        				converted.pop();
         				variableNamesAlreadyOutlined.add(caption1stTerminalChild);
         			}
         		});
@@ -190,7 +168,7 @@ public class PythonCodeCompletion extends MontoService {
                     .toArray();
             if (terminalChildren.length > 1) {
                 Terminal structureIdent = (Terminal) terminalChildren[1];
-                completions.add(new Completion(name, content.extract(structureIdent).toString(), icon));
+                completions.add(new Completion(name, extract(content,structureIdent).toString(), icon));
 
             }
             node.getChildren().forEach(child -> child.accept(this));
@@ -203,20 +181,12 @@ public class PythonCodeCompletion extends MontoService {
                     .toArray();
             if (terminalChildren.length > 1) {
                 Terminal structureIdent = (Terminal) terminalChildren[0];
-                completions.add(new Completion(name, content.extract(structureIdent).toString(), icon));
+                completions.add(new Completion(name, extract(content,structureIdent).toString(), icon));
 
             }
             node.getChildren().forEach(child -> child.accept(this));
         }
 
-        private void leaf(NonTerminal node, String name, String icon) {
-            AST ident = node
-                    .getChildren()
-                    .stream()
-                    .filter(ast -> ast instanceof Terminal)
-                    .findFirst().get();
-            completions.add(new Completion(name, content.extract(ident).toString(), icon));
-        }
         
 
         public List<Completion> getCompletions() {
@@ -292,6 +262,10 @@ public class PythonCodeCompletion extends MontoService {
                 return false;
             }
         }
+    }
+    
+    private static String extract(String str, AST indent) {
+	return str.subSequence(indent.getStartOffset(), indent.getStartOffset()+indent.getLength()).toString();
     }
 
     private static <A> A last(List<A> list) {

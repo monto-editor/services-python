@@ -1,49 +1,39 @@
 package monto.service.python;
 
 import monto.service.MontoService;
+import monto.service.ZMQConfiguration;
 import monto.service.ast.*;
 import monto.service.message.*;
 import monto.service.outline.Outline;
 import monto.service.outline.Outlines;
-import monto.service.region.Region;
 
-import org.zeromq.ZContext;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-import java.util.Optional;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 public class PythonOutliner extends MontoService {
 
-    private static final Product AST = new Product("ast");
-    private static final Product OUTLINE = new Product("outline");
-    private static final Language PYTHON = new Language("python");
-
-	public PythonOutliner(ZContext context, String address, String registrationAddress, String serviceID) {
-		super(context, 
-				address, 
-				registrationAddress, 
-				serviceID, 
-				"Outline service for Python", 
+	public PythonOutliner(ZMQConfiguration zmqConfig) {
+		super(zmqConfig,
+				new ServiceID("pythonOutliner"), 
+				"Outline", 
 				"An outline service for Python", 
-				OUTLINE, 
-				PYTHON, 
+				Products.OUTLINE, 
+				Languages.PYTHON, 
 				new String[]{"Source","ast/python"});
 	}
 
 	@Override
-	public ProductMessage onVersionMessage(List<Message> messages) throws Exception {
+	public ProductMessageWithContents onVersionMessage(List<Message> messages) throws Exception {
 		VersionMessage version = Messages.getVersionMessage(messages);
-        if (!version.getLanguage().equals(PYTHON)) {
+        if (!version.getLanguage().equals(Languages.PYTHON)) {
             throw new IllegalArgumentException("wrong language in version message");
         }
         
-        ProductMessage ast = Messages.getProductMessage(messages, AST, PYTHON);
-        if (!ast.getLanguage().equals(PYTHON)) {
+        ProductMessage ast = Messages.getProductMessage(messages, Products.AST, Languages.PYTHON);
+        if (!ast.getLanguage().equals(Languages.PYTHON)) {
             throw new IllegalArgumentException("wrong language in ast product message");
         }
         
@@ -52,19 +42,11 @@ public class PythonOutliner extends MontoService {
         OutlineTrimmer trimmer = new OutlineTrimmer(version.getContent());
         root.accept(trimmer);
 
-        return new ProductMessage(
-                version.getVersionId(),
-                new LongKey(1),
-                version.getSource(),
-                OUTLINE,
-                PYTHON,
-                Outlines.encode(trimmer.getConverted()),
-                new ProductDependency(ast));
-	}
-	
-	@Override
-	public void onConfigurationMessage(List<Message> arg0) throws Exception {
-		
+        return productMessage(
+        		version.getVersionId(),
+        		version.getSource(),
+        		Outlines.encode(trimmer.getConverted()), 
+        		new ProductDependency(ast));
 	}
 	
 	/**
@@ -74,13 +56,13 @@ public class PythonOutliner extends MontoService {
 
         private Deque<Outline> converted = new ArrayDeque<>();
         private TreeSet<String> variableNamesAlreadyOutlined = new TreeSet<String>();
-        private final Contents content;
+        private final String content;
 
         public Outline getConverted() {
             return converted.getFirst();
         }
         
-        public OutlineTrimmer(Contents content){
+        public OutlineTrimmer(String content){
         	this.content = content;
         }
 
@@ -147,14 +129,14 @@ public class PythonOutliner extends MontoService {
         	
         	String caption1stTerminalChild;
         	if(finder.getFoundTerminal() != null){
-        		caption1stTerminalChild = content.extract(finder.getFoundTerminal()).toString();
+        		caption1stTerminalChild = extract(content,finder.getFoundTerminal()).toString();
         		
         		node.getChildren()
         		.stream()
         		.filter(ast -> ast instanceof Terminal)
         		.limit(2).reduce((previous, current) -> current)
         		.ifPresent(ident -> {
-        			String secondChild = content.extract(ident).toString();
+        			String secondChild = extract(content,ident).toString();
         			
         			if (!variableNamesAlreadyOutlined.contains(caption1stTerminalChild)&&secondChild.equals("=") ){
         				
@@ -167,7 +149,13 @@ public class PythonOutliner extends MontoService {
         			}
         		});
         	} 
+        	
+        	
         }
+        
+        private static String extract(String str, AST indent) {
+        	return str.subSequence(indent.getStartOffset(), indent.getStartOffset()+indent.getLength()).toString();
+            }
         
         private class TerminalFinder implements ASTVisitor {
         	

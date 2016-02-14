@@ -12,10 +12,9 @@ import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.antlr.v4.runtime.tree.TerminalNode;
-import org.zeromq.ZContext;
-import org.zeromq.ZMQ.Context;
 
 import monto.service.MontoService;
+import monto.service.ZMQConfiguration;
 import monto.service.ast.AST;
 import monto.service.ast.ASTs;
 import monto.service.ast.NonTerminal;
@@ -26,32 +25,27 @@ import monto.service.python.antlr.Python3Parser;
 
 public class PythonParser extends MontoService {
 	
-	private static final Product AST = new Product("ast");
-	private static final Language PYTHON = new Language("python");
 	
-	
-	public PythonParser(ZContext context, String address, String registrationAddress, String serviceID) {
-		super(context, 
-				address, 
-				registrationAddress, 
-				serviceID, 
-				"ANTLR Python Parser", 
+	public PythonParser(ZMQConfiguration zmqConfig) {
+		super(zmqConfig, 
+				new ServiceID("pythonParser"), 
+				"Parser", 
 				"A parser that produces an AST for Python using ANTLR", 
-				AST, 
-				PYTHON, 
+				Products.AST, 
+				Languages.PYTHON, 
 				new String[]{"Source"});
 	}
 
 	@Override
-	public ProductMessage onVersionMessage(List<Message> messages) throws Exception {
+	public ProductMessageWithContents onVersionMessage(List<Message> messages) throws Exception {
 		VersionMessage version = Messages.getVersionMessage(messages);
 		
-		if(!version.getLanguage().equals(PYTHON)) {
+		if(!version.getLanguage().equals(Languages.PYTHON)) {
 			throw new IllegalArgumentException("wrong language in version message");
 		}
 		
 		Python3Lexer lexer = new Python3Lexer(new ANTLRInputStream());
-		lexer.setInputStream(new ANTLRInputStream(version.getContent().getReader()));
+		lexer.setInputStream(new ANTLRInputStream(version.getContent()));
 		CommonTokenStream  tokens = new CommonTokenStream(lexer);
 		
 		
@@ -64,20 +58,12 @@ public class PythonParser extends MontoService {
 		walker.walk(converter, root);
 		
 		
-		return new ProductMessage(
+		return productMessage(
 				version.getVersionId(), 
-				new LongKey(1), 
 				version.getSource(), 
-				AST, 
-				PYTHON, 
 				ASTs.encode(converter.getRoot()));
 	}
 	
-	@Override
-	public void onConfigurationMessage(List<Message> arg0) throws Exception {
-		
-	}
-
 	
 	
 

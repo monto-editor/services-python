@@ -1,6 +1,8 @@
 package monto.service.python;
 
 import monto.service.MontoService;
+import monto.service.ZMQConfiguration;
+
 import org.apache.commons.cli.*;
 import org.zeromq.ZContext;
 
@@ -10,8 +12,6 @@ import java.util.List;
 public class PythonServices {
 	
 	public static void main(String[] args) throws ParseException{
-		 String address = "tcp://*";
-	        String regAddress = "tcp://*:5004";
 	        ZContext context = new ZContext(1);
 	        List<MontoService> services = new ArrayList<>();
 
@@ -33,30 +33,29 @@ public class PythonServices {
 	                .addOption("o", false, "enable python outliner")
 	                .addOption("c", false, "enable python code completioner")
 	                .addOption("address", true, "address of services")
-	                .addOption("registration", true, "address of broker registration");
+	                .addOption("registration", true, "address of broker registration")
+	                .addOption("configuration", true, "address of configuration messages");
 
 	        CommandLineParser parser = new DefaultParser();
 	        CommandLine cmd = parser.parse(options, args);
-
-	        if (cmd.hasOption("address")) {
-	            address = cmd.getOptionValue("address");
-	        }
-
-	        if (cmd.hasOption("registration")) {
-	            regAddress = cmd.getOptionValue("registration");
-	        }
+	        
+	        ZMQConfiguration zmqConfig = new ZMQConfiguration(
+	        		context,
+	        		cmd.getOptionValue("address"),
+	        		cmd.getOptionValue("registration"),
+	        		cmd.getOptionValue("configuration"));
 
 	        if (cmd.hasOption("t")) {
-	            services.add(new PythonTokenizer(context, address, regAddress, "pythonTokenizer"));
+	            services.add(new PythonTokenizer(zmqConfig));
 	        }
 	        if (cmd.hasOption("p")) {
-	            services.add(new PythonParser(context, address, regAddress, "pythonParser"));
+	            services.add(new PythonParser(zmqConfig));
 	        }
 	        if (cmd.hasOption("o")) {
-	            services.add(new PythonOutliner(context, address, regAddress, "pythonOutliner"));
+	            services.add(new PythonOutliner(zmqConfig));
 	        }
 	        if (cmd.hasOption("c")) {
-	            services.add(new PythonCodeCompletion(context, address, regAddress, "pythonCodeCompletioner"));
+	            services.add(new PythonCodeCompletion(zmqConfig));
 	        }
 
 	        for (MontoService service : services) {
