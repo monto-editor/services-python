@@ -19,25 +19,34 @@ import monto.service.ast.AST;
 import monto.service.ast.ASTs;
 import monto.service.ast.NonTerminal;
 import monto.service.ast.Terminal;
-import monto.service.message.*;
+import monto.service.product.ProductMessage;
+import monto.service.product.Products;
 import monto.service.python.antlr.Python3Lexer;
 import monto.service.python.antlr.Python3Parser;
+import monto.service.registration.SourceDependency;
+import monto.service.types.Languages;
+import monto.service.types.Messages;
+import monto.service.types.Message;
+import monto.service.version.VersionMessage;
 
 public class PythonParser extends MontoService {
 	
 	
 	public PythonParser(ZMQConfiguration zmqConfig) {
 		super(zmqConfig, 
-				new ServiceID("pythonParser"), 
+				PythonServices.PYTHON_PARSER, 
 				"Parser", 
 				"A parser that produces an AST for Python using ANTLR", 
-				Products.AST, 
 				Languages.PYTHON, 
-				new String[]{"Source"});
+				Products.AST,
+				options(),
+				dependencies(
+						new SourceDependency(Languages.PYTHON)
+						));
 	}
 
 	@Override
-	public ProductMessageWithContents onVersionMessage(List<Message> messages) throws Exception {
+	public ProductMessage onVersionMessage(List<Message> messages) throws Exception {
 		VersionMessage version = Messages.getVersionMessage(messages);
 		
 		if(!version.getLanguage().equals(Languages.PYTHON)) {
@@ -60,7 +69,8 @@ public class PythonParser extends MontoService {
 		
 		return productMessage(
 				version.getVersionId(), 
-				version.getSource(), 
+				version.getSource(),
+				Products.AST,
 				ASTs.encode(converter.getRoot()));
 	}
 	

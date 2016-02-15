@@ -5,30 +5,43 @@ import monto.service.ZMQConfiguration;
 import monto.service.ast.*;
 import monto.service.completion.Completion;
 import monto.service.completion.Completions;
-import monto.service.message.*;
+import monto.service.product.ProductMessage;
+import monto.service.product.Products;
 import monto.service.region.IRegion;
+import monto.service.registration.ServiceDependency;
+import monto.service.registration.SourceDependency;
+import monto.service.types.Languages;
+import monto.service.types.Messages;
+import monto.service.types.Message;
+import monto.service.types.Selection;
+import monto.service.version.VersionMessage;
 
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
+
 
 public class PythonCodeCompletion extends MontoService {
 	
 
 	public PythonCodeCompletion(ZMQConfiguration zmqConfig) {
         super(zmqConfig,
-        		new ServiceID("pythonCodeCompletion"), 
-        		"Code Completion service for Python", 
-        		"A code completion service for Python",  
-        		Products.COMPLETIONS, 
-        		Languages.PYTHON, 
-        		new String[]{"Source","ast/python"});
+        		PythonServices.PYTHON_CODE_COMPLETION, 
+        		"Code Completion", 
+        		"A code completion service for Python",
+        		Languages.PYTHON,
+        		Products.COMPLETIONS,
+        		options(),
+        		dependencies(new SourceDependency(Languages.PYTHON),
+        				new ServiceDependency(PythonServices.PYTHON_PARSER))
+        		);
 	}
 
 
 	@Override
-	public ProductMessageWithContents onVersionMessage(List<Message> messages) throws Exception {
+	public ProductMessage onVersionMessage(List<Message> messages) throws Exception {
         VersionMessage version = Messages.getVersionMessage(messages);
         if (!version.getLanguage().equals(Languages.PYTHON)) {
             throw new IllegalArgumentException("wrong language in version message");
@@ -54,7 +67,7 @@ public class PythonCodeCompletion extends MontoService {
                 }
                 String toBeCompleted = text;
                 
-                Stream<Completion> relevant =
+                List<Completion> relevant =
                         allcompletions
                                 .stream()
                                 .filter(comp -> comp.getReplacement().startsWith(toBeCompleted))
@@ -62,25 +75,27 @@ public class PythonCodeCompletion extends MontoService {
                                         comp.getDescription() + ": " + comp.getReplacement(),
                                         comp.getReplacement().substring(toBeCompleted.length()),
                                         version.getSelections().get(0).getStartOffset(),
-                                        comp.getIcon()));
+                                        comp.getIcon()))
+                                .collect(Collectors.toList());
 
                 return productMessage(
                 		version.getVersionId(), 
                 		version.getSource(), 
-                		Completions.encode(relevant), 
-                		new ProductDependency(ast));
+                		Products.COMPLETIONS,
+                		Completions.encode(relevant)); 
+//                		new ProductDependency(ast)
                 
         }
         throw new IllegalArgumentException("Code completion needs selection");
 	}
 	
-    private static List<Completion> allCompletions(String contents, AST root) {
+    private List<Completion> allCompletions(String contents, AST root) {
         AllCompletions completionVisitor = new AllCompletions(contents);
         root.accept(completionVisitor);
         return completionVisitor.getCompletions();
     }
 	
-	private static class AllCompletions implements ASTVisitor {
+	private class AllCompletions implements ASTVisitor {
 
 		private TreeSet<String> variableNamesAlreadyOutlined = new TreeSet<String>();
         private List<Completion> completions = new ArrayList<>();
@@ -96,19 +111,19 @@ public class PythonCodeCompletion extends MontoService {
             switch (node.getName()) {
 
                 case "funcdef":
-                	addFuncToConverted(node, "def", IconType.PUBLIC);
+                	addFuncToConverted(node, "def", getResource("public.png"));
                     break;
 
                 case "classdef":
-                	classToConverted(node, "class", IconType.CLASS);
+                	classToConverted(node, "class", getResource("class.png"));
                     break;
                     
                 case "global_stmt":
-                	structureDeclaration(node, "global", IconType.ENUM);
+                	structureDeclaration(node, "global", getResource("private.png"));
                 	break;
                 	
                 case "expr_stmt":
-                	checkExpr_stmt(node, "var", IconType.PRIVATE);
+                	checkExpr_stmt(node, "var", getResource("private.png"));
                 	break;
 
                 default:
@@ -121,17 +136,17 @@ public class PythonCodeCompletion extends MontoService {
 
         }
 
-        private void structureDeclaration(NonTerminal node, String name, String icon) {
+        private void structureDeclaration(NonTerminal node, String name, URL url) {
             Terminal structureIdent = (Terminal) node
                     .getChildren()
                     .stream()
                     .filter(ast -> ast instanceof Terminal)
                     .reduce((previous, current) -> current).get();
-            completions.add(new Completion(name, extract(content,structureIdent).toString(), icon));
+            completions.add(new Completion(name, extract(content,structureIdent).toString(), url));
             node.getChildren().forEach(child -> child.accept(this));
         }
         
-        private void checkExpr_stmt(NonTerminal node, String name, String icon) {
+        private void checkExpr_stmt(NonTerminal node, String name, URL url) {
             
         	TerminalFinder finder = new TerminalFinder();
         	
@@ -153,7 +168,7 @@ public class PythonCodeCompletion extends MontoService {
         			String secondChild = extract(content,ident).toString();
         			
         			if (!variableNamesAlreadyOutlined.contains(caption1stTerminalChild)&&secondChild.equals("=") ){
-        				completions.add(new Completion(name, caption1stTerminalChild, icon));
+        				completions.add(new Completion(name, caption1stTerminalChild, url));
         				variableNamesAlreadyOutlined.add(caption1stTerminalChild);
         			}
         		});
@@ -161,27 +176,27 @@ public class PythonCodeCompletion extends MontoService {
         	 node.getChildren().forEach(child -> child.accept(this));
         }
         
-        private void addFuncToConverted(NonTerminal node, String name, String icon) {
+        private void addFuncToConverted(NonTerminal node, String name, URL url) {
             Object[] terminalChildren = node.getChildren()
                     .stream()
                     .filter(ast -> ast instanceof Terminal)
                     .toArray();
             if (terminalChildren.length > 1) {
                 Terminal structureIdent = (Terminal) terminalChildren[1];
-                completions.add(new Completion(name, extract(content,structureIdent).toString(), icon));
+                completions.add(new Completion(name, extract(content,structureIdent).toString(), url));
 
             }
             node.getChildren().forEach(child -> child.accept(this));
         }
         
-        private void classToConverted(NonTerminal node, String name, String icon) {
+        private void classToConverted(NonTerminal node, String name, URL url) {
             Object[] terminalChildren = node.getChildren()
                     .stream()
                     .filter(ast -> ast instanceof Terminal)
                     .toArray();
             if (terminalChildren.length > 1) {
                 Terminal structureIdent = (Terminal) terminalChildren[0];
-                completions.add(new Completion(name, extract(content,structureIdent).toString(), icon));
+                completions.add(new Completion(name, extract(content,structureIdent).toString(), url));
 
             }
             node.getChildren().forEach(child -> child.accept(this));

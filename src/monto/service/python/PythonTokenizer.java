@@ -1,5 +1,6 @@
 package monto.service.python;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -7,12 +8,18 @@ import org.antlr.v4.runtime.ANTLRInputStream;
 
 import monto.service.MontoService;
 import monto.service.ZMQConfiguration;
-import monto.service.message.*;
+import monto.service.product.ProductMessage;
+import monto.service.product.Products;
 import monto.service.python.antlr.Python3Lexer;
 import monto.service.python.antlr.Python3Parser;
+import monto.service.registration.SourceDependency;
 import monto.service.token.Category;
 import monto.service.token.Token;
 import monto.service.token.Tokens;
+import monto.service.types.Languages;
+import monto.service.types.Message;
+import monto.service.types.Messages;
+import monto.service.version.VersionMessage;
 
 public class PythonTokenizer extends MontoService {
 
@@ -20,16 +27,20 @@ public class PythonTokenizer extends MontoService {
 
     public PythonTokenizer(ZMQConfiguration zmqConfig) {
         super(zmqConfig, 
-        		new ServiceID("pythonTokenizer"), 
+        		PythonServices.PYTHON_TOKENIZER, 
         		"Tokenizer", 
         		"A tokenizer for Python that uses ANTLR for tokenizing", 
-        		Products.TOKENS, 
         		Languages.PYTHON, 
-        		new String[]{"Source"});
+        		Products.TOKENS,
+        		options(),
+        		dependencies(
+        				new SourceDependency(Languages.PYTHON)
+        				)
+        		);
     }
 
 	@Override
-	public ProductMessageWithContents onVersionMessage(List<Message> messages) throws Exception {
+	public ProductMessage onVersionMessage(List<Message> messages) throws IOException {
 		VersionMessage version = Messages.getVersionMessage(messages);
         if (!version.getLanguage().equals(Languages.PYTHON)) {
             throw new IllegalArgumentException("wrong language in version message");
@@ -40,8 +51,10 @@ public class PythonTokenizer extends MontoService {
         List<Token> tokens = lexer.getAllTokens().stream().map(token -> convertToken(token)).collect(Collectors.toList());
 
         
-        return productMessage(version.getVersionId(), 
-        		version.getSource(), 
+        return productMessage(
+        		version.getVersionId(), 
+        		version.getSource(),
+        		Products.TOKENS,
         		Tokens.encode(tokens));
 	}
 	

@@ -3,11 +3,19 @@ package monto.service.python;
 import monto.service.MontoService;
 import monto.service.ZMQConfiguration;
 import monto.service.ast.*;
-import monto.service.message.*;
+import monto.service.filedependencies.ProductDependency;
 import monto.service.outline.Outline;
 import monto.service.outline.Outlines;
+import monto.service.product.ProductMessage;
+import monto.service.product.Products;
+import monto.service.registration.ServiceDependency;
+import monto.service.registration.SourceDependency;
+import monto.service.types.Languages;
+import monto.service.types.Messages;
+import monto.service.types.Message;
+import monto.service.version.VersionMessage;
 
-
+import java.net.URL;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
@@ -17,16 +25,20 @@ public class PythonOutliner extends MontoService {
 
 	public PythonOutliner(ZMQConfiguration zmqConfig) {
 		super(zmqConfig,
-				new ServiceID("pythonOutliner"), 
+				PythonServices.PYTHON_OUTLINER, 
 				"Outline", 
 				"An outline service for Python", 
-				Products.OUTLINE, 
 				Languages.PYTHON, 
-				new String[]{"Source","ast/python"});
+				Products.OUTLINE,
+				options(),
+				dependencies(
+						new SourceDependency(Languages.PYTHON),
+						new ServiceDependency(PythonServices.PYTHON_PARSER)
+						));
 	}
 
 	@Override
-	public ProductMessageWithContents onVersionMessage(List<Message> messages) throws Exception {
+	public ProductMessage onVersionMessage(List<Message> messages) throws Exception {
 		VersionMessage version = Messages.getVersionMessage(messages);
         if (!version.getLanguage().equals(Languages.PYTHON)) {
             throw new IllegalArgumentException("wrong language in version message");
@@ -45,6 +57,7 @@ public class PythonOutliner extends MontoService {
         return productMessage(
         		version.getVersionId(),
         		version.getSource(),
+        		Products.OUTLINE,
         		Outlines.encode(trimmer.getConverted()), 
         		new ProductDependency(ast));
 	}
@@ -52,7 +65,7 @@ public class PythonOutliner extends MontoService {
 	/**
      * Traverses the AST and removes unneeded information.
      */
-    private static class OutlineTrimmer implements ASTVisitor {
+    private class OutlineTrimmer implements ASTVisitor {
 
         private Deque<Outline> converted = new ArrayDeque<>();
         private TreeSet<String> variableNamesAlreadyOutlined = new TreeSet<String>();
@@ -77,19 +90,19 @@ public class PythonOutliner extends MontoService {
             	break;
             
                 case "funcdef":
-                	structureDeclaration(node, "function", IconType.PUBLIC);
+                	structureDeclaration(node, "function", getResource("public.png"));
                     break;
                     
                 case "classdef":
-                	structureDeclaration(node, "class", IconType.CLASS);
+                	structureDeclaration(node, "class", getResource("class.png"));
                 	break;
                 	
                 case "global_stmt":
-                	structureDeclaration(node, "global", IconType.PRIVATE);
+                	structureDeclaration(node, "global", getResource("private.png"));
                 	break;
                 	
                 case "expr_stmt":
-                	checkExpr_stmt(node, "var", IconType.PRIVATE);
+                	checkExpr_stmt(node, "var", getResource("private.png"));
                 	break;
 
                 default:
@@ -102,14 +115,14 @@ public class PythonOutliner extends MontoService {
 
         }
         
-        private void structureDeclaration(NonTerminal node, String name, String icon) {
+        private void structureDeclaration(NonTerminal node, String name, URL url) {
             node.getChildren()
                     .stream()
                     .filter(ast -> ast instanceof Terminal)
                     .limit(2)
                     .reduce((previous, current) -> current)
                     .ifPresent(ident -> {
-                        Outline structure = new Outline(name, ident, icon);
+                        Outline structure = new Outline(name, ident, url);
                         converted.peek().addChild(structure);
                         converted.push(structure);
                         node.getChildren().forEach(child -> child.accept(this));
@@ -117,7 +130,7 @@ public class PythonOutliner extends MontoService {
                     });
         }
         
-        private void checkExpr_stmt(NonTerminal node, String name, String icon) {
+        private void checkExpr_stmt(NonTerminal node, String name, URL url) {
          
         	TerminalFinder finder = new TerminalFinder();
         	
@@ -141,7 +154,7 @@ public class PythonOutliner extends MontoService {
         			if (!variableNamesAlreadyOutlined.contains(caption1stTerminalChild)&&secondChild.equals("=") ){
         				
         				NonTerminal reducedNode = new NonTerminal(secondChild, node.getChildren().get(0));
-        				Outline variable = new Outline(name, reducedNode, icon);
+        				Outline variable = new Outline(name, reducedNode, url);
         				converted.peek().addChild(variable);
         				converted.push(variable);
         				converted.pop();
@@ -153,7 +166,7 @@ public class PythonOutliner extends MontoService {
         	
         }
         
-        private static String extract(String str, AST indent) {
+        private String extract(String str, AST indent) {
         	return str.subSequence(indent.getStartOffset(), indent.getStartOffset()+indent.getLength()).toString();
             }
         
