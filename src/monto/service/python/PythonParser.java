@@ -24,13 +24,11 @@ import monto.service.product.Products;
 import monto.service.python.antlr.Python3Lexer;
 import monto.service.python.antlr.Python3Parser;
 import monto.service.registration.SourceDependency;
+import monto.service.request.Request;
+import monto.service.source.SourceMessage;
 import monto.service.types.Languages;
-import monto.service.types.Messages;
-import monto.service.types.Message;
-import monto.service.version.VersionMessage;
 
 public class PythonParser extends MontoService {
-	
 	
 	public PythonParser(ZMQConfiguration zmqConfig) {
 		super(zmqConfig, 
@@ -46,13 +44,11 @@ public class PythonParser extends MontoService {
 	}
 
 	@Override
-	public ProductMessage onVersionMessage(List<Message> messages) throws Exception {
-		VersionMessage version = Messages.getVersionMessage(messages);
-		
-		if(!version.getLanguage().equals(Languages.PYTHON)) {
-			throw new IllegalArgumentException("wrong language in version message");
-		}
-		
+	public ProductMessage onRequest(Request request) throws Exception {
+
+    	SourceMessage version = request.getSourceMessage()
+    			.orElseThrow(() -> new IllegalArgumentException("No version message in request"));
+
 		Python3Lexer lexer = new Python3Lexer(new ANTLRInputStream());
 		lexer.setInputStream(new ANTLRInputStream(version.getContent()));
 		CommonTokenStream  tokens = new CommonTokenStream(lexer);
@@ -68,9 +64,10 @@ public class PythonParser extends MontoService {
 		
 		
 		return productMessage(
-				version.getVersionId(), 
+				version.getId(), 
 				version.getSource(),
 				Products.AST,
+				Languages.PYTHON,
 				ASTs.encode(converter.getRoot()));
 	}
 	

@@ -1,26 +1,29 @@
 package monto.service.python;
 
-import monto.service.MontoService;
-import monto.service.ZMQConfiguration;
-import monto.service.ast.*;
-import monto.service.completion.Completion;
-import monto.service.completion.Completions;
-import monto.service.product.ProductMessage;
-import monto.service.product.Products;
-import monto.service.region.IRegion;
-import monto.service.registration.ServiceDependency;
-import monto.service.registration.SourceDependency;
-import monto.service.types.Languages;
-import monto.service.types.Messages;
-import monto.service.types.Message;
-import monto.service.types.Selection;
-import monto.service.version.VersionMessage;
-
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+
+import monto.service.MontoService;
+import monto.service.ZMQConfiguration;
+import monto.service.ast.AST;
+import monto.service.ast.ASTVisitor;
+import monto.service.ast.ASTs;
+import monto.service.ast.NonTerminal;
+import monto.service.ast.Terminal;
+import monto.service.completion.Completion;
+import monto.service.completion.Completions;
+import monto.service.product.ProductMessage;
+import monto.service.product.Products;
+import monto.service.region.IRegion;
+import monto.service.registration.ProductDependency;
+import monto.service.registration.SourceDependency;
+import monto.service.request.Request;
+import monto.service.source.SourceMessage;
+import monto.service.types.Languages;
+import monto.service.types.Selection;
 
 
 public class PythonCodeCompletion extends MontoService {
@@ -35,21 +38,17 @@ public class PythonCodeCompletion extends MontoService {
         		Products.COMPLETIONS,
         		options(),
         		dependencies(new SourceDependency(Languages.PYTHON),
-        				new ServiceDependency(PythonServices.PYTHON_PARSER))
+        				new ProductDependency(PythonServices.PYTHON_PARSER, Products.AST, Languages.PYTHON))
         		);
 	}
 
 
 	@Override
-	public ProductMessage onVersionMessage(List<Message> messages) throws Exception {
-        VersionMessage version = Messages.getVersionMessage(messages);
-        if (!version.getLanguage().equals(Languages.PYTHON)) {
-            throw new IllegalArgumentException("wrong language in version message");
-        }
-        ProductMessage ast = Messages.getProductMessage(messages, Products.AST, Languages.PYTHON);
-        if (!ast.getLanguage().equals(Languages.PYTHON)) {
-            throw new IllegalArgumentException("wrong language in ast product message");
-        }
+	public ProductMessage onRequest(Request request) throws Exception {
+        SourceMessage version = request.getSourceMessage()
+    			.orElseThrow(() -> new IllegalArgumentException("No version message in request"));
+        ProductMessage ast = request.getProductMessage(Products.AST, Languages.PYTHON)
+        		.orElseThrow(() -> new IllegalArgumentException("No AST message in request"));
         
         if (version.getSelections().size() > 0) {
             AST root = ASTs.decode(ast);
@@ -79,11 +78,11 @@ public class PythonCodeCompletion extends MontoService {
                                 .collect(Collectors.toList());
 
                 return productMessage(
-                		version.getVersionId(), 
+                		version.getId(), 
                 		version.getSource(), 
                 		Products.COMPLETIONS,
-                		Completions.encode(relevant)); 
-//                		new ProductDependency(ast)
+                		Languages.PYTHON,
+                		Completions.encode(relevant));
                 
         }
         throw new IllegalArgumentException("Code completion needs selection");
@@ -286,7 +285,4 @@ public class PythonCodeCompletion extends MontoService {
     private static <A> A last(List<A> list) {
         return list.get(list.size() - 1);
     }
-    
-
-
 }
