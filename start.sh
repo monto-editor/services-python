@@ -2,4 +2,6 @@ $JAVA_HOME/bin/java -jar dist/services-python.jar \
     -t -p -o -c \
     -address tcp://* \
     -registration tcp://*:5004 \
-    -configuration tcp://*:5007
+    -configuration tcp://*:5007 \
+    -resources 5052 \
+    -dyndeps tcp://*:5009

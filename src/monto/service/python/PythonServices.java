@@ -49,7 +49,8 @@ public class PythonServices {
 	                .addOption("address", true, "address of services")
 	                .addOption("registration", true, "address of broker registration")
 	                .addOption("configuration", true, "address of configuration messages")
-	                .addOption("resources", true, "port for http resource server");
+	                .addOption("resources", true, "port for http resource server")
+					.addOption("dyndeps", true, "port for dynamic dependency registration");
 
 	        CommandLineParser parser = new DefaultParser();
 	        CommandLine cmd = parser.parse(options, args);
@@ -59,6 +60,7 @@ public class PythonServices {
 	        		cmd.getOptionValue("address"),
 	        		cmd.getOptionValue("registration"),
 	        		cmd.getOptionValue("configuration"),
+					cmd.getOptionValue("dyndeps"),
 	        		Integer.parseInt(cmd.getOptionValue("resources")));
 	        
 	        resourceServer = new ResourceServer(PythonServices.class.getResource("/images").getPath(), zmqConfig.getResourcePort());
