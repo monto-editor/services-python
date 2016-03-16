@@ -15,7 +15,9 @@ import monto.service.python.antlr.Python3Parser;
 import monto.service.registration.SourceDependency;
 import monto.service.request.Request;
 import monto.service.source.SourceMessage;
-import monto.service.token.Category;
+import monto.service.token.TokenCategory;
+import monto.service.token.FontStore;
+import monto.service.token.Solarized;
 import monto.service.token.Token;
 import monto.service.token.Tokens;
 import monto.service.types.Languages;
@@ -23,6 +25,8 @@ import monto.service.types.Languages;
 public class PythonTokenizer extends MontoService {
 
     private Python3Lexer lexer;
+    private FontStore fonts = new FontStore();
+	private Solarized theme = Solarized.dark();
 
     public PythonTokenizer(ZMQConfiguration zmqConfig) {
         super(zmqConfig, 
@@ -53,31 +57,28 @@ public class PythonTokenizer extends MontoService {
         		version.getSource(),
         		Products.TOKENS,
         		Languages.PYTHON,
-        		Tokens.encode(tokens));
+			Tokens.encodeTokens(tokens));
 	}
 	
 	
 	private Token convertToken(org.antlr.v4.runtime.Token token) {
-        int offset = token.getStartIndex();
-        int length = token.getStopIndex() - offset + 1;
-
-        Category category;
+        TokenCategory category;
         
         switch (token.getType()) {
     	
        	
-//            category = Category.COMMENT;
+//            category = TokenCategory.COMMENT;
 //            break;
             
         case Python3Lexer.NONE :
-            category = Category.CONSTANT;
+            category = TokenCategory.CONSTANT;
             break;
             
         case Python3Lexer.STRING_LITERAL :
-            category = Category.STRING;
+            category = TokenCategory.STRING;
             break;
 
-//            category = Category.CHARACTER;
+//            category = TokenCategory.CHARACTER;
 //            break;
 
         case Python3Lexer.DECIMAL_INTEGER :
@@ -86,26 +87,26 @@ public class PythonTokenizer extends MontoService {
         case Python3Lexer.BIN_INTEGER :
         case Python3Lexer.IMAG_NUMBER :
         case Python3Lexer.BYTES_LITERAL :
-            category = Category.NUMBER;
+            category = TokenCategory.NUMBER;
             break;
 
         case Python3Lexer.TRUE :
         case Python3Lexer.FALSE :
-            category = Category.BOOLEAN;
+            category = TokenCategory.BOOLEAN;
             break;
 
         case Python3Lexer.FLOAT_NUMBER :
-            category = Category.FLOAT;
+            category = TokenCategory.FLOAT;
             break;
             
         case Python3Lexer.NAME :
-            category = Category.IDENTIFIER;
+            category = TokenCategory.IDENTIFIER;
             break;
 
         case Python3Lexer.IF :
         case Python3Lexer.ELIF :
         case Python3Lexer.ELSE :
-            category = Category.CONDITIONAL;
+            category = TokenCategory.CONDITIONAL;
             break;
 
         case Python3Lexer.WHILE :
@@ -114,10 +115,10 @@ public class PythonTokenizer extends MontoService {
         case Python3Lexer.CONTINUE :
         case Python3Lexer.BREAK :
         case Python3Lexer.SKIP :
-            category = Category.REPEAT;
+            category = TokenCategory.REPEAT;
             break;
 
-//            category = Category.LABEL;
+//            category = TokenCategory.LABEL;
 //            break;
 
         case Python3Lexer.OR :
@@ -157,7 +158,7 @@ public class PythonTokenizer extends MontoService {
         case Python3Lexer.IS :
         case Python3Lexer.POWER :
         case Python3Lexer.ASSIGN :
-            category = Category.OPERATOR;
+            category = TokenCategory.OPERATOR;
             break;
 
         case Python3Lexer.TRY :
@@ -165,21 +166,21 @@ public class PythonTokenizer extends MontoService {
         case Python3Lexer.RAISE :
         case Python3Lexer.EXCEPT :
         case Python3Lexer.WITH :
-            category = Category.EXCEPTION;
+            category = TokenCategory.EXCEPTION;
             break;
 
-//            category = Category.TYPE;
+//            category = TokenCategory.TYPE;
 //            break;
             
         case Python3Lexer.DEF :
         case Python3Lexer.GLOBAL :
         case Python3Lexer.NONLOCAL :
         case Python3Lexer.LAMBDA :
-            category = Category.MODIFIER;
+            category = TokenCategory.MODIFIER;
             break;
 
         case Python3Lexer.CLASS :
-            category = Category.STRUCTURE;
+            category = TokenCategory.STRUCTURE;
             break;
 
         case Python3Lexer.RETURN :
@@ -190,7 +191,7 @@ public class PythonTokenizer extends MontoService {
         case Python3Lexer.AS :
         case Python3Lexer.DEL :
         case Python3Lexer.PASS :
-            category = Category.KEYWORD;
+            category = TokenCategory.KEYWORD;
             break;
             
         case Python3Lexer.OPEN_BRACK :
@@ -203,7 +204,7 @@ public class PythonTokenizer extends MontoService {
         case Python3Parser.INDENT :
         case Python3Parser.DEDENT :
         	
-            category = Category.PARENTHESIS;
+            category = TokenCategory.PARENTHESIS;
             break;
 
         case Python3Lexer.DOT :
@@ -213,25 +214,28 @@ public class PythonTokenizer extends MontoService {
         case Python3Lexer.COLON :
         case Python3Lexer.SEMI_COLON :
         case Python3Lexer.ARROW :
-            category = Category.DELIMITER;
+            category = TokenCategory.DELIMITER;
             break;
             
         case Python3Lexer.AT :
-            category = Category.META;
+            category = TokenCategory.META;
             break;
             
         case Python3Lexer.NEWLINE :
-            category = Category.WHITESPACE;
+            category = TokenCategory.WHITESPACE;
             break;
             
         case Python3Lexer.UNKNOWN_CHAR :
-        	category = Category.UNKNOWN;
+		category = TokenCategory.UNKNOWN;
         	break;
 
         default:
-            category = Category.UNKNOWN;
+            category = TokenCategory.UNKNOWN;
         }
-        return new Token(offset, length, category);
+
+        int offset = token.getStartIndex();
+        int length = token.getStopIndex() - offset + 1;
+        return new Token(offset, length, category, fonts.getFont(category.getColor(theme)));
 	}
 
 
