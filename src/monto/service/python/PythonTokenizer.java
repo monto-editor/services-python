@@ -17,7 +17,7 @@ import monto.service.request.Request;
 import monto.service.source.SourceMessage;
 import monto.service.token.TokenCategory;
 import monto.service.token.FontStore;
-import monto.service.token.Solarized;
+import monto.service.token.ColorTheme;
 import monto.service.token.Token;
 import monto.service.token.Tokens;
 import monto.service.types.Languages;
@@ -26,7 +26,7 @@ public class PythonTokenizer extends MontoService {
 
     private Python3Lexer lexer;
     private FontStore fonts = new FontStore();
-	private Solarized theme = Solarized.dark();
+	private ColorTheme theme = ColorTheme.solarized();
 
     public PythonTokenizer(ZMQConfiguration zmqConfig) {
         super(zmqConfig, 
