@@ -63,7 +63,7 @@ public class PythonServices {
 					cmd.getOptionValue("dyndeps"),
 	        		Integer.parseInt(cmd.getOptionValue("resources")));
 	        
-	        resourceServer = new ResourceServer(PythonServices.class.getResource("/images").getPath(), zmqConfig.getResourcePort());
+	        resourceServer = new ResourceServer(PythonServices.class.getResource("/images").toExternalForm(), zmqConfig.getResourcePort());
 	        try {
 				resourceServer.start();
 			} catch (Exception e) {
