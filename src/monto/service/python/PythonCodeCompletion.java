@@ -110,19 +110,19 @@ public class PythonCodeCompletion extends MontoService {
             switch (node.getName()) {
 
                 case "funcdef":
-                	addFuncToConverted(node, "def", getResource("public.png"));
+                	addFuncToConverted(node, "def", getResource("method-public.png"));
                     break;
 
                 case "classdef":
-                	classToConverted(node, "class", getResource("class.png"));
+                	classToConverted(node, "class", getResource("class-public.png"));
                     break;
                     
                 case "global_stmt":
-                	structureDeclaration(node, "global", getResource("private.png"));
+                	structureDeclaration(node, "global", getResource("field-public.png"));
                 	break;
                 	
                 case "expr_stmt":
-                	checkExpr_stmt(node, "var", getResource("private.png"));
+                	checkExpr_stmt(node, "var", getResource("field-public.png"));
                 	break;
 
                 default:

@@ -86,19 +86,19 @@ public class PythonOutliner extends MontoService {
             	break;
             
                 case "funcdef":
-                	structureDeclaration(node, "function", getResource("public.png"));
+                	structureDeclaration(node, "function", getResource("method-public.png"));
                     break;
                     
                 case "classdef":
-                	structureDeclaration(node, "class", getResource("class.png"));
+                	structureDeclaration(node, "class", getResource("class-public.png"));
                 	break;
                 	
                 case "global_stmt":
-                	structureDeclaration(node, "global", getResource("private.png"));
+                	structureDeclaration(node, "global", getResource("field-public.png"));
                 	break;
                 	
                 case "expr_stmt":
-                	checkExpr_stmt(node, "var", getResource("private.png"));
+                	checkExpr_stmt(node, "var", getResource("field-public.png"));
                 	break;
 
                 default:
