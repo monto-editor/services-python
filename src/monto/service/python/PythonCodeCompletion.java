@@ -4,7 +4,7 @@ import monto.service.MontoService;
 import monto.service.ZMQConfiguration;
 import monto.service.ast.*;
 import monto.service.completion.Completion;
-import monto.service.completion.Completions;
+import monto.service.gson.GsonMonto;
 import monto.service.product.ProductMessage;
 import monto.service.product.Products;
 import monto.service.region.IRegion;
@@ -78,7 +78,7 @@ public class PythonCodeCompletion extends MontoService {
                     version.getSource(),
                     Products.COMPLETIONS,
                     Languages.PYTHON,
-                    Completions.encode(relevant));
+                    GsonMonto.toJson(relevant));
 
         }
         throw new IllegalArgumentException("Code completion needs selection");

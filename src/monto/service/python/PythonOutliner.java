@@ -3,8 +3,8 @@ package monto.service.python;
 import monto.service.MontoService;
 import monto.service.ZMQConfiguration;
 import monto.service.ast.*;
+import monto.service.gson.GsonMonto;
 import monto.service.outline.Outline;
-import monto.service.outline.Outlines;
 import monto.service.product.ProductMessage;
 import monto.service.product.Products;
 import monto.service.registration.ProductDependency;
@@ -51,7 +51,7 @@ public class PythonOutliner extends MontoService {
                 version.getSource(),
                 Products.OUTLINE,
                 Languages.PYTHON,
-                Outlines.encode(trimmer.getConverted()));
+                GsonMonto.toJson(trimmer.getConverted()));
     }
 
     /**
