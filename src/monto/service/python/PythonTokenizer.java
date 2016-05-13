@@ -43,7 +43,7 @@ public class PythonTokenizer extends MontoService {
                 .orElseThrow(() -> new IllegalArgumentException("No version message in request"));
 
         lexer = new Python3Lexer(new ANTLRInputStream());
-        lexer.setInputStream(new ANTLRInputStream(version.getContent()));
+        lexer.setInputStream(new ANTLRInputStream(version.getContents()));
         List<Token> tokens = lexer.getAllTokens().stream().map(token -> convertToken(token)).collect(Collectors.toList());
 
 

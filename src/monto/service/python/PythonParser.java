@@ -49,7 +49,7 @@ public class PythonParser extends MontoService {
                 .orElseThrow(() -> new IllegalArgumentException("No version message in request"));
 
         Python3Lexer lexer = new Python3Lexer(new ANTLRInputStream());
-        lexer.setInputStream(new ANTLRInputStream(version.getContent()));
+        lexer.setInputStream(new ANTLRInputStream(version.getContents()));
         CommonTokenStream tokens = new CommonTokenStream(lexer);
 
 

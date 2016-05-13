@@ -43,7 +43,7 @@ public class PythonOutliner extends MontoService {
 
         NonTerminal root = (NonTerminal) ASTs.decode(ast);
 
-        OutlineTrimmer trimmer = new OutlineTrimmer(version.getContent());
+        OutlineTrimmer trimmer = new OutlineTrimmer(version.getContents());
         root.accept(trimmer);
 
         return productMessage(
