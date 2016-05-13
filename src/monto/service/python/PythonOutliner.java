@@ -1,17 +1,8 @@
 package monto.service.python;
 
-import java.net.URL;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.TreeSet;
-
 import monto.service.MontoService;
 import monto.service.ZMQConfiguration;
-import monto.service.ast.AST;
-import monto.service.ast.ASTVisitor;
-import monto.service.ast.ASTs;
-import monto.service.ast.NonTerminal;
-import monto.service.ast.Terminal;
+import monto.service.ast.*;
 import monto.service.outline.Outline;
 import monto.service.outline.Outlines;
 import monto.service.product.ProductMessage;
@@ -22,43 +13,48 @@ import monto.service.request.Request;
 import monto.service.source.SourceMessage;
 import monto.service.types.Languages;
 
+import java.net.URL;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.TreeSet;
+
 public class PythonOutliner extends MontoService {
 
-	public PythonOutliner(ZMQConfiguration zmqConfig) {
-		super(zmqConfig,
-				PythonServices.PYTHON_OUTLINER, 
-				"Outline", 
-				"An outline service for Python", 
-				Languages.PYTHON, 
-				Products.OUTLINE,
-				options(),
-				dependencies(
-						new SourceDependency(Languages.PYTHON),
-						new ProductDependency(PythonServices.PYTHON_PARSER, Products.AST, Languages.PYTHON)
-						));
-	}
+    public PythonOutliner(ZMQConfiguration zmqConfig) {
+        super(zmqConfig,
+                PythonServices.PYTHON_OUTLINER,
+                "Outline",
+                "An outline service for Python",
+                Languages.PYTHON,
+                Products.OUTLINE,
+                options(),
+                dependencies(
+                        new SourceDependency(Languages.PYTHON),
+                        new ProductDependency(PythonServices.PYTHON_PARSER, Products.AST, Languages.PYTHON)
+                ));
+    }
 
-	@Override
-	public ProductMessage onRequest(Request request) throws Exception {
-    	SourceMessage version = request.getSourceMessage()
-    			.orElseThrow(() -> new IllegalArgumentException("No version message in request"));
+    @Override
+    public ProductMessage onRequest(Request request) throws Exception {
+        SourceMessage version = request.getSourceMessage()
+                .orElseThrow(() -> new IllegalArgumentException("No version message in request"));
         ProductMessage ast = request.getProductMessage(Products.AST, Languages.PYTHON)
-        		.orElseThrow(() -> new IllegalArgumentException("No AST message in request"));
-        
+                .orElseThrow(() -> new IllegalArgumentException("No AST message in request"));
+
         NonTerminal root = (NonTerminal) ASTs.decode(ast);
 
         OutlineTrimmer trimmer = new OutlineTrimmer(version.getContent());
         root.accept(trimmer);
 
         return productMessage(
-        		version.getId(),
-        		version.getSource(),
-        		Products.OUTLINE,
-        		Languages.PYTHON,
-        		Outlines.encode(trimmer.getConverted()));
-	}
-	
-	/**
+                version.getId(),
+                version.getSource(),
+                Products.OUTLINE,
+                Languages.PYTHON,
+                Outlines.encode(trimmer.getConverted()));
+    }
+
+    /**
      * Traverses the AST and removes unneeded information.
      */
     private class OutlineTrimmer implements ASTVisitor {
@@ -70,36 +66,36 @@ public class PythonOutliner extends MontoService {
         public Outline getConverted() {
             return converted.getFirst();
         }
-        
-        public OutlineTrimmer(String content){
-        	this.content = content;
+
+        public OutlineTrimmer(String content) {
+            this.content = content;
         }
 
         @Override
         public void visit(NonTerminal node) {
-        	
+
             switch (node.getName()) {
-            
-            case "file_input":
-            	 converted.push(new Outline("file_input", node, null));
-                 node.getChildren().forEach(child -> child.accept(this));
-            	break;
-            
-                case "funcdef":
-                	structureDeclaration(node, "function", getResource("method-public.png"));
+
+                case "file_input":
+                    converted.push(new Outline("file_input", node, null));
+                    node.getChildren().forEach(child -> child.accept(this));
                     break;
-                    
+
+                case "funcdef":
+                    structureDeclaration(node, "function", getResource("method-public.png"));
+                    break;
+
                 case "classdef":
-                	structureDeclaration(node, "class", getResource("class-public.png"));
-                	break;
-                	
+                    structureDeclaration(node, "class", getResource("class-public.png"));
+                    break;
+
                 case "global_stmt":
-                	structureDeclaration(node, "global", getResource("field-public.png"));
-                	break;
-                	
+                    structureDeclaration(node, "global", getResource("field-public.png"));
+                    break;
+
                 case "expr_stmt":
-                	checkExpr_stmt(node, "var", getResource("field-public.png"));
-                	break;
+                    checkExpr_stmt(node, "var", getResource("field-public.png"));
+                    break;
 
                 default:
                     node.getChildren().forEach(child -> child.accept(this));
@@ -110,7 +106,7 @@ public class PythonOutliner extends MontoService {
         public void visit(Terminal token) {
 
         }
-        
+
         private void structureDeclaration(NonTerminal node, String name, URL url) {
             node.getChildren()
                     .stream()
@@ -125,76 +121,74 @@ public class PythonOutliner extends MontoService {
                         converted.pop();
                     });
         }
-        
+
         private void checkExpr_stmt(NonTerminal node, String name, URL url) {
-         
-        	TerminalFinder finder = new TerminalFinder();
-        	
-        	node.getChildren()
-                	.stream()
-                	.filter(ast -> ast instanceof NonTerminal)
-                	.forEach(ident -> ident.accept(finder));
-        	
-        	
-        	String caption1stTerminalChild;
-        	if(finder.getFoundTerminal() != null){
-        		caption1stTerminalChild = extract(content,finder.getFoundTerminal()).toString();
-        		
-        		node.getChildren()
-        		.stream()
-        		.filter(ast -> ast instanceof Terminal)
-        		.limit(2).reduce((previous, current) -> current)
-        		.ifPresent(ident -> {
-        			String secondChild = extract(content,ident).toString();
-        			
-        			if (!variableNamesAlreadyOutlined.contains(caption1stTerminalChild)&&secondChild.equals("=") ){
-        				
-        				NonTerminal reducedNode = new NonTerminal(secondChild, node.getChildren().get(0));
-        				Outline variable = new Outline(name, reducedNode, url);
-        				converted.peek().addChild(variable);
-        				converted.push(variable);
-        				converted.pop();
-        				variableNamesAlreadyOutlined.add(caption1stTerminalChild);
-        			}
-        		});
-        	} 
-        	
-        	
-        }
-        
-        private String extract(String str, AST indent) {
-        	return str.subSequence(indent.getStartOffset(), indent.getStartOffset()+indent.getLength()).toString();
+
+            TerminalFinder finder = new TerminalFinder();
+
+            node.getChildren()
+                    .stream()
+                    .filter(ast -> ast instanceof NonTerminal)
+                    .forEach(ident -> ident.accept(finder));
+
+
+            String caption1stTerminalChild;
+            if (finder.getFoundTerminal() != null) {
+                caption1stTerminalChild = extract(content, finder.getFoundTerminal()).toString();
+
+                node.getChildren()
+                        .stream()
+                        .filter(ast -> ast instanceof Terminal)
+                        .limit(2).reduce((previous, current) -> current)
+                        .ifPresent(ident -> {
+                            String secondChild = extract(content, ident).toString();
+
+                            if (!variableNamesAlreadyOutlined.contains(caption1stTerminalChild) && secondChild.equals("=")) {
+
+                                NonTerminal reducedNode = new NonTerminal(secondChild, node.getChildren().get(0));
+                                Outline variable = new Outline(name, reducedNode, url);
+                                converted.peek().addChild(variable);
+                                converted.push(variable);
+                                converted.pop();
+                                variableNamesAlreadyOutlined.add(caption1stTerminalChild);
+                            }
+                        });
             }
-        
-        private class TerminalFinder implements ASTVisitor {
-        	
-        	private Terminal foundTerminal = null;
 
 
-			@Override
-			public void visit(NonTerminal node) {
-				if(foundTerminal == null){
-					node.getChildren()
-                    .stream().forEach(child -> child.accept(this));
-				}
-				
-			}
-
-			@Override
-			public void visit(Terminal token) {
-				foundTerminal = token;
-				
-			}
-			
-			public Terminal getFoundTerminal() {
-				return foundTerminal;
-			}
-        	
         }
-        
+
+        private String extract(String str, AST indent) {
+            return str.subSequence(indent.getStartOffset(), indent.getStartOffset() + indent.getLength()).toString();
+        }
+
+        private class TerminalFinder implements ASTVisitor {
+
+            private Terminal foundTerminal = null;
+
+
+            @Override
+            public void visit(NonTerminal node) {
+                if (foundTerminal == null) {
+                    node.getChildren()
+                            .stream().forEach(child -> child.accept(this));
+                }
+
+            }
+
+            @Override
+            public void visit(Terminal token) {
+                foundTerminal = token;
+
+            }
+
+            public Terminal getFoundTerminal() {
+                return foundTerminal;
+            }
+
+        }
+
     }
-
-
 
 
 }

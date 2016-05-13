@@ -1,18 +1,5 @@
 package monto.service.python;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
-
-import org.antlr.v4.runtime.ANTLRInputStream;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.ErrorNode;
-import org.antlr.v4.runtime.tree.ParseTreeListener;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
-import org.antlr.v4.runtime.tree.TerminalNode;
-
 import monto.service.MontoService;
 import monto.service.ZMQConfiguration;
 import monto.service.ast.AST;
@@ -27,52 +14,62 @@ import monto.service.registration.SourceDependency;
 import monto.service.request.Request;
 import monto.service.source.SourceMessage;
 import monto.service.types.Languages;
+import org.antlr.v4.runtime.ANTLRInputStream;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.ErrorNode;
+import org.antlr.v4.runtime.tree.ParseTreeListener;
+import org.antlr.v4.runtime.tree.ParseTreeWalker;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
 
 public class PythonParser extends MontoService {
-	
-	public PythonParser(ZMQConfiguration zmqConfig) {
-		super(zmqConfig, 
-				PythonServices.PYTHON_PARSER, 
-				"Parser", 
-				"A parser that produces an AST for Python using ANTLR", 
-				Languages.PYTHON, 
-				Products.AST,
-				options(),
-				dependencies(
-						new SourceDependency(Languages.PYTHON)
-						));
-	}
 
-	@Override
-	public ProductMessage onRequest(Request request) throws Exception {
+    public PythonParser(ZMQConfiguration zmqConfig) {
+        super(zmqConfig,
+                PythonServices.PYTHON_PARSER,
+                "Parser",
+                "A parser that produces an AST for Python using ANTLR",
+                Languages.PYTHON,
+                Products.AST,
+                options(),
+                dependencies(
+                        new SourceDependency(Languages.PYTHON)
+                ));
+    }
 
-    	SourceMessage version = request.getSourceMessage()
-    			.orElseThrow(() -> new IllegalArgumentException("No version message in request"));
+    @Override
+    public ProductMessage onRequest(Request request) throws Exception {
 
-		Python3Lexer lexer = new Python3Lexer(new ANTLRInputStream());
-		lexer.setInputStream(new ANTLRInputStream(version.getContent()));
-		CommonTokenStream  tokens = new CommonTokenStream(lexer);
-		
-		
-		Python3Parser parser = new Python3Parser(tokens);
-		parser.setTokenStream(tokens);
-		ParserRuleContext root = parser.file_input();
-		ParseTreeWalker walker = new ParseTreeWalker();
-		
-		Converter converter = new Converter();
-		walker.walk(converter, root);
-		
-		
-		return productMessage(
-				version.getId(), 
-				version.getSource(),
-				Products.AST,
-				Languages.PYTHON,
-				ASTs.encode(converter.getRoot()));
-	}
-	
-	
-	
+        SourceMessage version = request.getSourceMessage()
+                .orElseThrow(() -> new IllegalArgumentException("No version message in request"));
+
+        Python3Lexer lexer = new Python3Lexer(new ANTLRInputStream());
+        lexer.setInputStream(new ANTLRInputStream(version.getContent()));
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+
+
+        Python3Parser parser = new Python3Parser(tokens);
+        parser.setTokenStream(tokens);
+        ParserRuleContext root = parser.file_input();
+        ParseTreeWalker walker = new ParseTreeWalker();
+
+        Converter converter = new Converter();
+        walker.walk(converter, root);
+
+
+        return productMessage(
+                version.getId(),
+                version.getSource(),
+                Products.AST,
+                Languages.PYTHON,
+                ASTs.encode(converter.getRoot()));
+    }
+
 
     private static class Converter implements ParseTreeListener {
 
@@ -121,7 +118,6 @@ public class PythonParser extends MontoService {
             return nodes.peek();
         }
     }
-
 
 
 }
