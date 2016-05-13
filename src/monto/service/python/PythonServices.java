@@ -3,7 +3,7 @@ package monto.service.python;
 import monto.service.MontoService;
 import monto.service.ZMQConfiguration;
 import monto.service.resources.ResourceServer;
-import monto.service.types.ServiceID;
+import monto.service.types.ServiceId;
 import org.apache.commons.cli.*;
 import org.zeromq.ZContext;
 
@@ -11,10 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PythonServices {
-    public static final ServiceID PYTHON_TOKENIZER = new ServiceID("pythonTokenizer");
-    public static final ServiceID PYTHON_PARSER = new ServiceID("pythonParser");
-    public static final ServiceID PYTHON_OUTLINER = new ServiceID("pythonOutliner");
-    public static final ServiceID PYTHON_CODE_COMPLETION = new ServiceID("pythonCodeCompletion");
+    public static final ServiceId PYTHON_TOKENIZER = new ServiceId("pythonTokenizer");
+    public static final ServiceId PYTHON_PARSER = new ServiceId("pythonParser");
+    public static final ServiceId PYTHON_OUTLINER = new ServiceId("pythonOutliner");
+    public static final ServiceId PYTHON_CODE_COMPLETION = new ServiceId("pythonCodeCompletion");
     private static ResourceServer resourceServer;
 
 
