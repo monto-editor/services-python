@@ -41,7 +41,7 @@ public class PythonOutliner extends MontoService {
         ProductMessage ast = request.getProductMessage(Products.AST, Languages.PYTHON)
                 .orElseThrow(() -> new IllegalArgumentException("No AST message in request"));
 
-        NonTerminal root = (NonTerminal) ASTs.decode(ast);
+        NonTerminal root = (NonTerminal) GsonMonto.fromJson(ast, AST.class);
 
         OutlineTrimmer trimmer = new OutlineTrimmer(version.getContents());
         root.accept(trimmer);
@@ -51,7 +51,7 @@ public class PythonOutliner extends MontoService {
                 version.getSource(),
                 Products.OUTLINE,
                 Languages.PYTHON,
-                GsonMonto.toJson(trimmer.getConverted()));
+                GsonMonto.toJsonTree(trimmer.getConverted()));
     }
 
     /**

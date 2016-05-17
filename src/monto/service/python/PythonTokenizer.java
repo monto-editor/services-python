@@ -2,6 +2,7 @@ package monto.service.python;
 
 import monto.service.MontoService;
 import monto.service.ZMQConfiguration;
+import monto.service.gson.GsonMonto;
 import monto.service.product.ProductMessage;
 import monto.service.product.Products;
 import monto.service.python.antlr.Python3Lexer;
@@ -52,7 +53,8 @@ public class PythonTokenizer extends MontoService {
                 version.getSource(),
                 Products.TOKENS,
                 Languages.PYTHON,
-                Tokens.encodeTokens(tokens));
+                GsonMonto.toJsonTree(tokens)
+        );
     }
 
 

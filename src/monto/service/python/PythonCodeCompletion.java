@@ -2,7 +2,10 @@ package monto.service.python;
 
 import monto.service.MontoService;
 import monto.service.ZMQConfiguration;
-import monto.service.ast.*;
+import monto.service.ast.AST;
+import monto.service.ast.ASTVisitor;
+import monto.service.ast.NonTerminal;
+import monto.service.ast.Terminal;
 import monto.service.completion.Completion;
 import monto.service.gson.GsonMonto;
 import monto.service.product.ProductMessage;
@@ -47,7 +50,7 @@ public class PythonCodeCompletion extends MontoService {
                 .orElseThrow(() -> new IllegalArgumentException("No AST message in request"));
 
         if (version.getSelection().isPresent()) {
-            AST root = ASTs.decode(ast);
+            AST root = GsonMonto.fromJson(ast, AST.class);
             List<Completion> allcompletions = allCompletions(version.getContents(), root);
             List<AST> selectedPath = selectedPath(root, version.getSelection().get());
 
@@ -78,7 +81,7 @@ public class PythonCodeCompletion extends MontoService {
                     version.getSource(),
                     Products.COMPLETIONS,
                     Languages.PYTHON,
-                    GsonMonto.toJson(relevant));
+                    GsonMonto.toJsonTree(relevant));
 
         }
         throw new IllegalArgumentException("Code completion needs selection");

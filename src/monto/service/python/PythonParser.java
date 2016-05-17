@@ -3,9 +3,9 @@ package monto.service.python;
 import monto.service.MontoService;
 import monto.service.ZMQConfiguration;
 import monto.service.ast.AST;
-import monto.service.ast.ASTs;
 import monto.service.ast.NonTerminal;
 import monto.service.ast.Terminal;
+import monto.service.gson.GsonMonto;
 import monto.service.product.ProductMessage;
 import monto.service.product.Products;
 import monto.service.python.antlr.Python3Lexer;
@@ -67,7 +67,8 @@ public class PythonParser extends MontoService {
                 version.getSource(),
                 Products.AST,
                 Languages.PYTHON,
-                ASTs.encode(converter.getRoot()));
+                GsonMonto.toJsonTree(converter.getRoot())
+        );
     }
 
 
