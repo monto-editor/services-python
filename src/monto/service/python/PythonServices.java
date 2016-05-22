@@ -48,7 +48,8 @@ public class PythonServices {
                 .addOption("registration", true, "address of broker registration")
                 .addOption("configuration", true, "address of configuration messages")
                 .addOption("resources", true, "port for http resource server")
-                .addOption("dyndeps", true, "port for dynamic dependency registration");
+                .addOption("dyndeps", true, "port for dynamic dependency registration")
+                .addOption("debug", false, "enable debugging output");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -79,6 +80,10 @@ public class PythonServices {
         }
         if (cmd.hasOption("c")) {
             services.add(new PythonCodeCompletion(zmqConfig));
+        }
+        if (cmd.hasOption("debug")) {
+            for (MontoService service : services)
+                service.enableDebugging();
         }
 
         for (MontoService service : services) {
