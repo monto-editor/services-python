@@ -43,7 +43,7 @@ public class PythonParser extends MontoService {
     }
 
     @Override
-    public ProductMessage onRequest(Request request) throws Exception {
+    public void onRequest(Request request) throws Exception {
 
         SourceMessage version = request.getSourceMessage()
                 .orElseThrow(() -> new IllegalArgumentException("No version message in request"));
@@ -62,7 +62,7 @@ public class PythonParser extends MontoService {
         walker.walk(converter, root);
 
 
-        return productMessage(
+        sendProductMessage(
                 version.getId(),
                 version.getSource(),
                 Products.AST,

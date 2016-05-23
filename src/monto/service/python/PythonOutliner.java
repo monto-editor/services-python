@@ -2,7 +2,10 @@ package monto.service.python;
 
 import monto.service.MontoService;
 import monto.service.ZMQConfiguration;
-import monto.service.ast.*;
+import monto.service.ast.AST;
+import monto.service.ast.ASTVisitor;
+import monto.service.ast.NonTerminal;
+import monto.service.ast.Terminal;
 import monto.service.gson.GsonMonto;
 import monto.service.outline.Outline;
 import monto.service.product.ProductMessage;
@@ -35,7 +38,7 @@ public class PythonOutliner extends MontoService {
     }
 
     @Override
-    public ProductMessage onRequest(Request request) throws Exception {
+    public void onRequest(Request request) throws Exception {
         SourceMessage version = request.getSourceMessage()
                 .orElseThrow(() -> new IllegalArgumentException("No version message in request"));
         ProductMessage ast = request.getProductMessage(Products.AST, Languages.PYTHON)
@@ -46,7 +49,7 @@ public class PythonOutliner extends MontoService {
         OutlineTrimmer trimmer = new OutlineTrimmer(version.getContents());
         root.accept(trimmer);
 
-        return productMessage(
+        sendProductMessage(
                 version.getId(),
                 version.getSource(),
                 Products.OUTLINE,

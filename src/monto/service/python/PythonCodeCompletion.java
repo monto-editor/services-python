@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 
 public class PythonCodeCompletion extends MontoService {
 
-
     public PythonCodeCompletion(ZMQConfiguration zmqConfig) {
         super(zmqConfig,
                 PythonServices.PYTHON_CODE_COMPLETION,
@@ -43,7 +42,7 @@ public class PythonCodeCompletion extends MontoService {
 
 
     @Override
-    public ProductMessage onRequest(Request request) throws Exception {
+    public void onRequest(Request request) throws Exception {
         SourceMessage version = request.getSourceMessage()
                 .orElseThrow(() -> new IllegalArgumentException("No version message in request"));
         ProductMessage ast = request.getProductMessage(Products.AST, Languages.PYTHON)
@@ -76,7 +75,7 @@ public class PythonCodeCompletion extends MontoService {
                                     comp.getIcon()))
                             .collect(Collectors.toList());
 
-            return productMessage(
+            sendProductMessage(
                     version.getId(),
                     version.getSource(),
                     Products.COMPLETIONS,
