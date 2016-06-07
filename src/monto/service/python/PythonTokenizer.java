@@ -1,30 +1,27 @@
 package monto.service.python;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import monto.service.MontoService;
 import monto.service.ZMQConfiguration;
 import monto.service.gson.GsonMonto;
+import monto.service.highlighting.Token;
+import monto.service.highlighting.TokenCategory;
 import monto.service.product.Products;
 import monto.service.python.antlr.Python3Lexer;
 import monto.service.python.antlr.Python3Parser;
 import monto.service.registration.SourceDependency;
 import monto.service.request.Request;
 import monto.service.source.SourceMessage;
-import monto.service.token.ColorTheme;
-import monto.service.token.FontStore;
-import monto.service.token.Token;
-import monto.service.token.TokenCategory;
 import monto.service.types.Languages;
-import org.antlr.v4.runtime.ANTLRInputStream;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
+import org.antlr.v4.runtime.ANTLRInputStream;
 
 public class PythonTokenizer extends MontoService {
 
     private Python3Lexer lexer;
-    private FontStore fonts = new FontStore();
-    private ColorTheme theme = ColorTheme.solarized();
 
     public PythonTokenizer(ZMQConfiguration zmqConfig) {
         super(zmqConfig,
@@ -234,7 +231,7 @@ public class PythonTokenizer extends MontoService {
 
         int offset = token.getStartIndex();
         int length = token.getStopIndex() - offset + 1;
-        return new Token(offset, length, category, fonts.getFont(category.getColor(theme)));
+        return new Token(offset, length, category.getFont());
     }
 
 
