@@ -1,18 +1,17 @@
 package monto.service.python;
 
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
+
 import monto.service.MontoService;
 import monto.service.ZMQConfiguration;
 import monto.service.ast.AST;
 import monto.service.ast.ASTVisitor;
 import monto.service.ast.NonTerminal;
 import monto.service.ast.Terminal;
-import monto.service.completion.Completion;
 import monto.service.gson.GsonMonto;
+import monto.service.identifier.Identifier;
 import monto.service.product.ProductMessage;
 import monto.service.product.Products;
 import monto.service.registration.ProductDependency;
@@ -22,19 +21,19 @@ import monto.service.request.Request;
 import monto.service.source.SourceMessage;
 import monto.service.types.Languages;
 
-public class PythonCodeCompletion extends MontoService {
+public class PythonIdentifierFinder extends MontoService {
 
-  public PythonCodeCompletion(ZMQConfiguration zmqConfig) {
+  public PythonIdentifierFinder(ZMQConfiguration zmqConfig) {
     super(
         zmqConfig,
-        PythonServices.PYTHON_CODE_COMPLETION,
-        "Code Completion",
-        "A code completion service for Python",
-        productDescriptions(new ProductDescription(Products.COMPLETIONS, Languages.PYTHON)),
+        PythonServices.IDENTIFIER_FINDER,
+        "Identifier Finder",
+        "Searches AST for identifiers",
+        productDescriptions(new ProductDescription(Products.IDENTIFIER, Languages.PYTHON)),
         options(),
         dependencies(
             new SourceDependency(Languages.PYTHON),
-            new ProductDependency(PythonServices.PYTHON_PARSER, Products.AST, Languages.PYTHON)),
+            new ProductDependency(PythonServices.PARSER, Products.AST, Languages.PYTHON)),
         commands());
   }
 
@@ -50,41 +49,25 @@ public class PythonCodeCompletion extends MontoService {
             .orElseThrow(() -> new IllegalArgumentException("No AST message in request"));
 
     AST root = GsonMonto.fromJson(ast, AST.class);
-    List<Completion> allcompletions = allCompletions(version.getContents(), root);
-
-    List<Completion> relevant =
-        allcompletions
-            .stream()
-            .map(
-                comp
-                    -> new Completion(
-                        comp.getDescription() + ": " + comp.getReplacement(),
-                        comp.getReplacement(),
-                        0,
-                        comp.getIcon()))
-            .collect(Collectors.toList());
+    IdentifierVisitor completionVisitor = new IdentifierVisitor(version.getContents());
+    root.accept(completionVisitor);
+    List<Identifier> identifiers = completionVisitor.getIdentifiers();
 
     sendProductMessage(
         version.getId(),
         version.getSource(),
-        Products.COMPLETIONS,
+        Products.IDENTIFIER,
         Languages.PYTHON,
-        GsonMonto.toJsonTree(relevant));
+        GsonMonto.toJsonTree(identifiers));
   }
 
-  private List<Completion> allCompletions(String contents, AST root) {
-    AllCompletions completionVisitor = new AllCompletions(contents);
-    root.accept(completionVisitor);
-    return completionVisitor.getCompletions();
-  }
-
-  private class AllCompletions implements ASTVisitor {
+  private class IdentifierVisitor implements ASTVisitor {
 
     private TreeSet<String> variableNamesAlreadyOutlined = new TreeSet<String>();
-    private List<Completion> completions = new ArrayList<>();
+    private List<Identifier> identifiers = new ArrayList<>();
     private String content;
 
-    public AllCompletions(String content) {
+    public IdentifierVisitor(String content) {
       this.content = content;
     }
 
@@ -93,19 +76,19 @@ public class PythonCodeCompletion extends MontoService {
 
       switch (node.getName()) {
         case "funcdef":
-          addFuncToConverted(node, "def", getResource("method-public.png"));
+          addFuncToConverted(node, "method");
           break;
 
         case "classdef":
-          classToConverted(node, "class", getResource("class-public.png"));
+          classToConverted(node, "class");
           break;
 
         case "global_stmt":
-          structureDeclaration(node, "global", getResource("field-public.png"));
+          structureDeclaration(node, "field");
           break;
 
         case "expr_stmt":
-          checkExpr_stmt(node, "var", getResource("field-public.png"));
+          checkExpr_stmt(node, "variable");
           break;
 
         default:
@@ -116,7 +99,7 @@ public class PythonCodeCompletion extends MontoService {
     @Override
     public void visit(Terminal token) {}
 
-    private void structureDeclaration(NonTerminal node, String name, URL url) {
+    private void structureDeclaration(NonTerminal node, String type) {
       Terminal structureIdent =
           (Terminal)
               node.getChildren()
@@ -124,11 +107,12 @@ public class PythonCodeCompletion extends MontoService {
                   .filter(ast -> ast instanceof Terminal)
                   .reduce((previous, current) -> current)
                   .get();
-      completions.add(new Completion(name, structureIdent.extract(content), url));
+      String identifier = structureIdent.extract(content);
+      identifiers.add(new Identifier(identifier, type));
       node.getChildren().forEach(child -> child.accept(this));
     }
 
-    private void checkExpr_stmt(NonTerminal node, String name, URL url) {
+    private void checkExpr_stmt(NonTerminal node, String type) {
 
       TerminalFinder finder = new TerminalFinder();
 
@@ -152,7 +136,7 @@ public class PythonCodeCompletion extends MontoService {
 
                   if (!variableNamesAlreadyOutlined.contains(caption1stTerminalChild)
                       && secondChild.equals("=")) {
-                    completions.add(new Completion(name, caption1stTerminalChild, url));
+                    identifiers.add(new Identifier(caption1stTerminalChild, type));
                     variableNamesAlreadyOutlined.add(caption1stTerminalChild);
                   }
                 });
@@ -160,28 +144,30 @@ public class PythonCodeCompletion extends MontoService {
       node.getChildren().forEach(child -> child.accept(this));
     }
 
-    private void addFuncToConverted(NonTerminal node, String name, URL url) {
+    private void addFuncToConverted(NonTerminal node, String type) {
       Object[] terminalChildren =
           node.getChildren().stream().filter(ast -> ast instanceof Terminal).toArray();
       if (terminalChildren.length > 1) {
         Terminal structureIdent = (Terminal) terminalChildren[1];
-        completions.add(new Completion(name, structureIdent.extract(content), url));
+        String identifier = structureIdent.extract(content);
+        identifiers.add(new Identifier(identifier, type));
       }
       node.getChildren().forEach(child -> child.accept(this));
     }
 
-    private void classToConverted(NonTerminal node, String name, URL url) {
+    private void classToConverted(NonTerminal node, String type) {
       Object[] terminalChildren =
           node.getChildren().stream().filter(ast -> ast instanceof Terminal).toArray();
       if (terminalChildren.length > 1) {
         Terminal structureIdent = (Terminal) terminalChildren[0];
-        completions.add(new Completion(name, structureIdent.extract(content), url));
+        String identifier = structureIdent.extract(content);
+        identifiers.add(new Identifier(identifier, type));
       }
       node.getChildren().forEach(child -> child.accept(this));
     }
 
-    public List<Completion> getCompletions() {
-      return completions;
+    public List<Identifier> getIdentifiers() {
+      return identifiers;
     }
 
     private class TerminalFinder implements ASTVisitor {

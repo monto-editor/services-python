@@ -84,7 +84,7 @@ public class Main {
       services.add(new PythonIdentifierFinder(zmqConfig));
     }
     if (cmd.hasOption("codecompletioner")) {
-      services.add(new PythonCodeCompletion(zmqConfig));
+      services.add(new PythonCodeCompletioner(zmqConfig));
     }
     if (cmd.hasOption("debug")) {
       services.forEach(MontoService::enableDebugging);
