@@ -1,104 +1,13 @@
 package monto.service.python;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-import org.zeromq.ZContext;
-
-import java.util.ArrayList;
-import java.util.List;
-import monto.service.MontoService;
-import monto.service.ZMQConfiguration;
-import monto.service.resources.ResourceServer;
 import monto.service.types.ServiceId;
 
-public class PythonServices {
-  public static final ServiceId PYTHON_TOKENIZER = new ServiceId("pythonTokenizer");
-  public static final ServiceId PYTHON_PARSER = new ServiceId("pythonParser");
-  public static final ServiceId PYTHON_OUTLINER = new ServiceId("pythonOutliner");
-  public static final ServiceId PYTHON_CODE_COMPLETION = new ServiceId("pythonCodeCompletion");
-  private static ResourceServer resourceServer;
+public final class PythonServices {
+  public static final ServiceId TOKENIZER = new ServiceId("pythonTokenizer");
+  public static final ServiceId PARSER = new ServiceId("pythonParser");
+  public static final ServiceId OUTLINER = new ServiceId("pythonOutliner");
+  public static final ServiceId CODE_COMPLETION = new ServiceId("pythonCodeCompletion");
+  public static final ServiceId IDENTIFIER_FINDER = new ServiceId("pythonIdentifierFinder");
 
-  public static void main(String[] args) throws ParseException {
-    ZContext context = new ZContext(1);
-    List<MontoService> services = new ArrayList<>();
-
-    Runtime.getRuntime()
-        .addShutdownHook(
-            new Thread() {
-              @Override
-              public void run() {
-                System.out.println("terminating...");
-                try {
-                  for (MontoService service : services) {
-                    service.stop();
-                    resourceServer.stop();
-                  }
-                } catch (Exception e) {
-                  e.printStackTrace();
-                }
-                context.destroy();
-                System.out.println("everything terminated, good bye");
-              }
-            });
-
-    Options options = new Options();
-    options
-        .addOption("t", false, "enable python tokenizer")
-        .addOption("p", false, "enable python parser")
-        .addOption("o", false, "enable python outliner")
-        .addOption("c", false, "enable python code completioner")
-        .addOption("address", true, "address of services")
-        .addOption("registration", true, "address of broker registration")
-        .addOption("resources", true, "port for http resource server")
-        .addOption("debug", false, "enable debugging output");
-
-    CommandLineParser parser = new DefaultParser();
-    CommandLine cmd = parser.parse(options, args);
-
-    ZMQConfiguration zmqConfig =
-        new ZMQConfiguration(
-            context,
-            cmd.getOptionValue("address"),
-            cmd.getOptionValue("registration"),
-            Integer.parseInt(cmd.getOptionValue("resources")));
-
-    resourceServer =
-        new ResourceServer(
-            PythonServices.class.getResource("/images").toExternalForm(),
-            zmqConfig.getResourcePort());
-    try {
-      resourceServer.start();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-
-    if (cmd.hasOption("t")) {
-      services.add(new PythonTokenizer(zmqConfig));
-    }
-    if (cmd.hasOption("p")) {
-      services.add(new PythonParser(zmqConfig));
-    }
-    if (cmd.hasOption("o")) {
-      services.add(new PythonOutliner(zmqConfig));
-    }
-    if (cmd.hasOption("c")) {
-      services.add(new PythonCodeCompletion(zmqConfig));
-    }
-    if (cmd.hasOption("debug")) {
-      for (MontoService service : services) {
-        service.enableDebugging();
-      }
-    }
-
-    for (MontoService service : services) {
-      try {
-        service.start();
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
-  }
+  private PythonServices() {}
 }

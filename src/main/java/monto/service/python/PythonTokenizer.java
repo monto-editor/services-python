@@ -26,7 +26,7 @@ public class PythonTokenizer extends MontoService {
   public PythonTokenizer(ZMQConfiguration zmqConfig) {
     super(
         zmqConfig,
-        PythonServices.PYTHON_TOKENIZER,
+        PythonServices.TOKENIZER,
         "Tokenizer",
         "A tokenizer for Python that uses ANTLR for tokenizing",
         productDescriptions(new ProductDescription(Products.TOKENS, Languages.PYTHON)),

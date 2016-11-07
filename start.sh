@@ -10,7 +10,11 @@ if [ ! -f "$gradle_shadow_jar" ]; then
 fi
 
 java -jar "$gradle_shadow_jar" \
-     -t -p -o -c \
+     -tokenizer \
+     -parser \
+     -outliner \
+     -identifierfinder \
+     -codecompletioner \
      -address tcp://* \
      -registration tcp://*:5002 \
      -resources 5052

@@ -32,7 +32,7 @@ public class PythonParser extends MontoService {
   public PythonParser(ZMQConfiguration zmqConfig) {
     super(
         zmqConfig,
-        PythonServices.PYTHON_PARSER,
+        PythonServices.PARSER,
         "Parser",
         "A parser that produces an AST for Python using ANTLR",
         productDescriptions(new ProductDescription(Products.AST, Languages.PYTHON)),

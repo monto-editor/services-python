@@ -26,14 +26,14 @@ public class PythonOutliner extends MontoService {
   public PythonOutliner(ZMQConfiguration zmqConfig) {
     super(
         zmqConfig,
-        PythonServices.PYTHON_OUTLINER,
+        PythonServices.OUTLINER,
         "Outline",
         "An outline service for Python",
         productDescriptions(new ProductDescription(Products.OUTLINE, Languages.PYTHON)),
         options(),
         dependencies(
             new SourceDependency(Languages.PYTHON),
-            new ProductDependency(PythonServices.PYTHON_PARSER, Products.AST, Languages.PYTHON)),
+            new ProductDependency(PythonServices.PARSER, Products.AST, Languages.PYTHON)),
         commands());
   }
 
