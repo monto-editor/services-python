@@ -1,6 +1,7 @@
 package monto.service.python.antlr;
 // Generated from Python3.g4 by ANTLR 4.5
 
+import java.util.List;
 import org.antlr.v4.runtime.NoViableAltException;
 import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -16,8 +17,6 @@ import org.antlr.v4.runtime.atn.PredictionContextCache;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.antlr.v4.runtime.tree.TerminalNode;
-
-import java.util.List;
 
 @SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast"})
 public class Python3Parser extends Parser {
@@ -486,9 +485,7 @@ public class Python3Parser extends Parser {
   };
   public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
-  /**
-   * @deprecated Use {@link #VOCABULARY} instead.
-   */
+  /** @deprecated Use {@link #VOCABULARY} instead. */
   @Deprecated public static final String[] tokenNames;
 
   static {
