@@ -16,6 +16,7 @@ import monto.service.gson.GsonMonto;
 import monto.service.product.ProductMessage;
 import monto.service.product.Products;
 import monto.service.registration.ProductDependency;
+import monto.service.registration.ProductDescription;
 import monto.service.registration.SourceDependency;
 import monto.service.request.Request;
 import monto.service.source.SourceMessage;
@@ -29,12 +30,12 @@ public class PythonCodeCompletion extends MontoService {
         PythonServices.PYTHON_CODE_COMPLETION,
         "Code Completion",
         "A code completion service for Python",
-        Languages.PYTHON,
-        Products.COMPLETIONS,
+        productDescriptions(new ProductDescription(Products.COMPLETIONS, Languages.PYTHON)),
         options(),
         dependencies(
             new SourceDependency(Languages.PYTHON),
-            new ProductDependency(PythonServices.PYTHON_PARSER, Products.AST, Languages.PYTHON)));
+            new ProductDependency(PythonServices.PYTHON_PARSER, Products.AST, Languages.PYTHON)),
+        commands());
   }
 
   @Override

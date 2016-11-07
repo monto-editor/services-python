@@ -15,6 +15,7 @@ import monto.service.outline.Outline;
 import monto.service.product.ProductMessage;
 import monto.service.product.Products;
 import monto.service.registration.ProductDependency;
+import monto.service.registration.ProductDescription;
 import monto.service.registration.SourceDependency;
 import monto.service.request.Request;
 import monto.service.source.SourceMessage;
@@ -28,12 +29,12 @@ public class PythonOutliner extends MontoService {
         PythonServices.PYTHON_OUTLINER,
         "Outline",
         "An outline service for Python",
-        Languages.PYTHON,
-        Products.OUTLINE,
+        productDescriptions(new ProductDescription(Products.OUTLINE, Languages.PYTHON)),
         options(),
         dependencies(
             new SourceDependency(Languages.PYTHON),
-            new ProductDependency(PythonServices.PYTHON_PARSER, Products.AST, Languages.PYTHON)));
+            new ProductDependency(PythonServices.PYTHON_PARSER, Products.AST, Languages.PYTHON)),
+        commands());
   }
 
   @Override

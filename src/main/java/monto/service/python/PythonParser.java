@@ -21,6 +21,7 @@ import monto.service.gson.GsonMonto;
 import monto.service.product.Products;
 import monto.service.python.antlr.Python3Lexer;
 import monto.service.python.antlr.Python3Parser;
+import monto.service.registration.ProductDescription;
 import monto.service.registration.SourceDependency;
 import monto.service.request.Request;
 import monto.service.source.SourceMessage;
@@ -34,10 +35,10 @@ public class PythonParser extends MontoService {
         PythonServices.PYTHON_PARSER,
         "Parser",
         "A parser that produces an AST for Python using ANTLR",
-        Languages.PYTHON,
-        Products.AST,
+        productDescriptions(new ProductDescription(Products.AST, Languages.PYTHON)),
         options(),
-        dependencies(new SourceDependency(Languages.PYTHON)));
+        dependencies(new SourceDependency(Languages.PYTHON)),
+        commands());
   }
 
   @Override

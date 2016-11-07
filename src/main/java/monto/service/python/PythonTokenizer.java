@@ -13,6 +13,7 @@ import monto.service.highlighting.TokenCategory;
 import monto.service.product.Products;
 import monto.service.python.antlr.Python3Lexer;
 import monto.service.python.antlr.Python3Parser;
+import monto.service.registration.ProductDescription;
 import monto.service.registration.SourceDependency;
 import monto.service.request.Request;
 import monto.service.source.SourceMessage;
@@ -28,10 +29,10 @@ public class PythonTokenizer extends MontoService {
         PythonServices.PYTHON_TOKENIZER,
         "Tokenizer",
         "A tokenizer for Python that uses ANTLR for tokenizing",
-        Languages.PYTHON,
-        Products.TOKENS,
+        productDescriptions(new ProductDescription(Products.TOKENS, Languages.PYTHON)),
         options(),
-        dependencies(new SourceDependency(Languages.PYTHON)));
+        dependencies(new SourceDependency(Languages.PYTHON)),
+        commands());
   }
 
   @Override
